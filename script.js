@@ -154,12 +154,12 @@ function endQuiz() {
 
 function saveResults() {
     const results = getResults();
-    const date = new Date().toLocaleString();
+    const date = formatDate(new Date());
     
     const resultEntry = {
         date,
         correct: correctAnswers,
-        missed: quizData.length - correctAnswers, // Calculer le nombre de questions manquées
+        missed: quizData.length - correctAnswers,
         isRetry: isRetryMode // Indiquer si c'était une reprise d'erreurs
     };
 
@@ -226,8 +226,9 @@ function displayLastResults() {
     const results = getResults();
     const lastResultsList = document.getElementById('lastResults');
     lastResultsList.innerHTML = results.slice(-10).map(result => `
-        <li>${result.date} - Correctes: ${result.correct}, Manquées: ${result.missed} ${result.isRetry ? '(Reprise des erreurs)' : ''}</li>
-    `).join('');
+        <li>${result.date} - <strong> ${result.correct} / ${result.correct+result.missed} </strong>  ${result.isRetry ? '(Reprise des erreurs)' : ''}</li>
+        `).join('');
+        // <li>${result.date} - Correctes: ${result.correct}, Manquées: ${result.missed} ${result.isRetry ? '(Reprise des erreurs)' : ''}</li>
 }
 
 
@@ -283,6 +284,16 @@ function displayMultiplicationStats() {
             statsTable.appendChild(cell);
         }
     }
+}
+
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Les mois commencent à 0
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
 showMenu();
