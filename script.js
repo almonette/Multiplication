@@ -6,7 +6,7 @@ let correctAnswers = 0;
 let missedQuestions = [];
 let timerInterval;
 let timeLeft = 10;
-let points = 0; // Points gagnés par l'utilisateur
+let points = 0;
 const fullCircle = 113;
 const localStorageKey = 'multiplicationQuizData';
 const statsKeyPrefix = 'multiplicationStats_';
@@ -21,8 +21,8 @@ document.getElementById('answer').addEventListener('keyup', (event) => {
 
 function startQuiz() {
     quizLength = 20;
-    points = 0; // Réinitialiser les points au début de chaque quiz
-    document.getElementById('pointsDisplay').innerText = `Points : ${points}`; // Affichage des points réinitialisés
+    points = 0;
+    document.getElementById('pointsDisplay').innerText = `Points : ${points}`;
     quizData.length = 0;
     missedQuestions = [];
     currentQuestionIndex = 0;
@@ -104,8 +104,8 @@ function submitAnswer() {
     if (userAnswer === correctAnswer) {
         correctAnswers++;
         if (!isRetryMode) {
-            points += 10 + timeLeft; // 10 points pour une bonne réponse + les secondes restantes du timer
-            document.getElementById('pointsDisplay').innerText = `Points : ${points}`; // Mise à jour de l'affichage des points
+            points += 10 + timeLeft; 
+            document.getElementById('pointsDisplay').innerText = `Points : ${points}`;
             updateStats(question, true);
         }
         showFeedback(true);
@@ -136,7 +136,7 @@ function updateProgressBar() {
 }
 
 function updateStats(question, isCorrect) {
-    if (isRetryMode) return; // Ne pas mettre à jour les stats pendant la reprise des erreurs
+    if (isRetryMode) return;
 
     const key = `${statsKeyPrefix}${question.num1}x${question.num2}`;
     const stats = JSON.parse(localStorage.getItem(key)) || { success: 0, errors: 0, consecutive: 0 };
@@ -146,7 +146,7 @@ function updateStats(question, isCorrect) {
         stats.consecutive++;
     } else {
         stats.errors++;
-        stats.consecutive = 0; // Réinitialiser les réussites consécutives en cas d'erreur
+        stats.consecutive = 0;
     }
 
     localStorage.setItem(key, JSON.stringify(stats));
@@ -156,7 +156,7 @@ function updateStats(question, isCorrect) {
 function endQuiz() {
     saveResults();
     showResults();
-    points = 0; // Réinitialiser les points
+    points = 0;
 }
 
 function saveResults() {
@@ -167,14 +167,14 @@ function saveResults() {
         date,
         correct: correctAnswers,
         missed: quizData.length - correctAnswers,
-        points, // Sauvegarder les points
-        isRetry: isRetryMode // Indiquer si c'était une reprise d'erreurs
+        points,
+        isRetry: isRetryMode
     };
 
     results.push(resultEntry);
     localStorage.setItem(localStorageKey, JSON.stringify(results));
 
-    isRetryMode = false; // Réinitialiser le mode après la sauvegarde des résultats
+    isRetryMode = false;
 }
 
 
@@ -205,15 +205,15 @@ function showResults() {
 
 
 function retryErrors() {
-    points = 0; // Réinitialiser les points
-    isRetryMode = true; // Activer le mode de reprise des erreurs
+    points = 0;
+    isRetryMode = true; 
     quizData.length = 0;
-    quizData.push(...missedQuestions); // Conserver les questions manquées
-    missedQuestions = []; // Réinitialiser les questions manquées
+    quizData.push(...missedQuestions);
+    missedQuestions = [];
 
     currentQuestionIndex = 0;
     correctAnswers = 0;
-    quizLength = quizData.length; // Adapter la longueur du quiz
+    quizLength = quizData.length;
 
     document.getElementById('result').classList.add('hidden');
     showQuiz();
@@ -298,7 +298,7 @@ function displayMultiplicationStats() {
 
 function formatDate(date) {
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Les mois commencent à 0
+    const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');

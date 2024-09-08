@@ -29,7 +29,7 @@ h1 {
 
 #statsTable {
     display: grid;
-    grid-template-columns: repeat(14, 1fr); /* 13 colonnes pour les multiplications + 1 pour les indices des lignes */
+    grid-template-columns: repeat(14, 1fr);
     gap: 5px;
     margin-top: 20px;
 }
@@ -42,38 +42,32 @@ h1 {
     height: 25px;
 }
 
-/* En-têtes */
 .header {
     background-color: #b2ebf2;
     font-weight: bold;
 }
 
-/* Cases avec 3 réussites consécutives */
 .blue-bg {
     background-color: #b2ebf2;
     color: blue;
 }
 
-/* Cases avec plus d'erreurs que de succès */
 .red-bg {
     background-color: #ffcccc;
     color: red;
 }
 
-/* Cases avec plus de succès que d'erreurs */
 .green-bg {
     background-color: #ccffcc;
     color: green;
     font-weight: bold;
 }
 
-/* Cases neutres (pas de progression notable) */
 .neutral-bg {
     background-color: #f0f8ff;
     color: black;
 }
 
-/* Style de l'icône de pouce en l'air */
 .consecutive-count {
     font-size: 1.2em;
     font-weight: bold;
@@ -83,17 +77,16 @@ h1 {
     font-size: 1.5em;
 }
 
-/* Icône pour erreur */
 .fa-exclamation-circle {
     color: red;
 }
 
-/* Cercle de décompte */
+
 .countdown {
     position: absolute;
     top: 80px;
     right: 20px;
-    width: 80px; /* Augmenté pour mieux voir */
+    width: 80px; 
     height: 80px;
     z-index: 100;
 }
@@ -108,9 +101,9 @@ h1 {
     fill: none;
     stroke: #00e676;
     stroke-width: 4;
-    stroke-dasharray: 113; /* La longueur du cercle doit correspondre à la circonférence */
+    stroke-dasharray: 113; 
     stroke-dashoffset: 0;
-    transition: stroke-dashoffset 1s linear; /* La transition doit être de 1 seconde */
+    transition: stroke-dashoffset 1s linear; 
 }
 .hight-time {
     stroke: #00e676;
@@ -127,7 +120,7 @@ h1 {
     z-index: 10;
 }
 
-/* Timer qui change de couleur selon le temps restant */
+
 .low-time {
     stroke: #ff1744;
     color: #ff1744;
@@ -172,11 +165,11 @@ button:hover {
 }
 
 #progress-bar {
-    width: 0%; /* Commence à 0% */
+    width: 0%;
     height: 100%;
-    background-color: #4caf50; /* Vert par défaut */
+    background-color: #4caf50; 
     border-radius: 25px;
-    transition: width 0.3s ease; /* Animation douce de la progression */
+    transition: width 0.3s ease; 
 }
 
 .correct {
