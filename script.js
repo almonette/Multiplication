@@ -123,7 +123,7 @@ function submitAnswer() {
     }
 
     answerInput.value = '';
-    answerInput.focus(); // Ramène le focus sur l'input
+    answerInput.focus(); 
 }
 
 function updateProgressBar() {
@@ -213,6 +213,7 @@ function showMenu() {
 function showQuiz() {
     document.getElementById('menu').classList.add('hidden');
     document.getElementById('quiz').classList.remove('hidden');
+    document.getElementById('answer').focus(); 
 }
 
 function displayLastResults() {
