@@ -6,6 +6,7 @@ let correctAnswers = 0;
 let missedQuestions = [];
 let timerInterval;
 let timeLeft = 10;
+let points = 0; // Points gagnés par l'utilisateur
 const fullCircle = 113;
 const localStorageKey = 'multiplicationQuizData';
 const statsKeyPrefix = 'multiplicationStats_';
@@ -20,6 +21,8 @@ document.getElementById('answer').addEventListener('keyup', (event) => {
 
 function startQuiz() {
     quizLength = 20;
+    points = 0; // Réinitialiser les points au début de chaque quiz
+    document.getElementById('pointsDisplay').innerText = `Points : ${points}`; // Affichage des points réinitialisés
     quizData.length = 0;
     missedQuestions = [];
     currentQuestionIndex = 0;
@@ -100,12 +103,14 @@ function submitAnswer() {
 
     if (userAnswer === correctAnswer) {
         correctAnswers++;
-        if (!isRetryMode) { // Ne pas mettre à jour les stats en mode reprise
+        if (!isRetryMode) {
+            points += 10 + timeLeft; // 10 points pour une bonne réponse + les secondes restantes du timer
+            document.getElementById('pointsDisplay').innerText = `Points : ${points}`; // Mise à jour de l'affichage des points
             updateStats(question, true);
         }
         showFeedback(true);
     } else {
-        if (!isRetryMode) { // Seulement ajouter à missedQuestions si ce n'est pas une reprise
+        if (!isRetryMode) {
             missedQuestions.push({ num1: question.num1, num2: question.num2 });
             updateStats(question, false);
         }
@@ -122,6 +127,7 @@ function submitAnswer() {
     answerInput.value = '';
     answerInput.focus();
 }
+
 
 function updateProgressBar() {
     const progressBar = document.getElementById('progress-bar');
@@ -150,24 +156,27 @@ function updateStats(question, isCorrect) {
 function endQuiz() {
     saveResults();
     showResults();
+    points = 0; // Réinitialiser les points
 }
 
 function saveResults() {
     const results = getResults();
     const date = formatDate(new Date());
-    
+
     const resultEntry = {
         date,
         correct: correctAnswers,
         missed: quizData.length - correctAnswers,
+        points, // Sauvegarder les points
         isRetry: isRetryMode // Indiquer si c'était une reprise d'erreurs
     };
 
     results.push(resultEntry);
     localStorage.setItem(localStorageKey, JSON.stringify(results));
-    
+
     isRetryMode = false; // Réinitialiser le mode après la sauvegarde des résultats
 }
+
 
 function getResults() {
     return JSON.parse(localStorage.getItem(localStorageKey)) || [];
@@ -177,7 +186,7 @@ function showResults() {
     document.getElementById('quiz').classList.add('hidden');
     document.getElementById('result').classList.remove('hidden');
 
-    const scoreMessage = `Votre score : ${correctAnswers} / ${quizLength}`;
+    const scoreMessage = `Votre score : ${correctAnswers} / ${quizLength}, Points: ${points}`;
     const resultElement = document.getElementById('result');
     resultElement.querySelector('h2')?.remove();
     resultElement.insertAdjacentHTML('afterbegin', `<h2>${scoreMessage}</h2>`);
@@ -194,7 +203,9 @@ function showResults() {
     }
 }
 
+
 function retryErrors() {
+    points = 0; // Réinitialiser les points
     isRetryMode = true; // Activer le mode de reprise des erreurs
     quizData.length = 0;
     quizData.push(...missedQuestions); // Conserver les questions manquées
@@ -226,9 +237,8 @@ function displayLastResults() {
     const results = getResults();
     const lastResultsList = document.getElementById('lastResults');
     lastResultsList.innerHTML = results.slice(-10).map(result => `
-        <li>${result.date} - <strong> ${result.correct} / ${result.correct+result.missed} </strong>  ${result.isRetry ? '(Reprise des erreurs)' : ''}</li>
-        `).join('');
-        // <li>${result.date} - Correctes: ${result.correct}, Manquées: ${result.missed} ${result.isRetry ? '(Reprise des erreurs)' : ''}</li>
+        <li>${result.date} - <strong> ${result.correct} / ${result.correct + result.missed} </strong>, Points: ${result.points !== undefined ? result.points : 'N/A'} ${result.isRetry ? '(Reprise des erreurs)' : ''}</li>
+    `).join('');
 }
 
 
