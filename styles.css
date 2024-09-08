@@ -35,31 +35,58 @@ h1 {
 
 #statsTable div {
     padding: 10px;
-    background-color: #e0f7fa;
     border: 1px solid #00796b;
     text-align: center;
     font-size: 0.9em;
+    height: 25px;
 }
 
+/* En-têtes */
 .header {
     background-color: #b2ebf2;
     font-weight: bold;
 }
 
-.blue-text {
+/* Cases avec 3 réussites consécutives */
+.blue-bg {
+    background-color: #b2ebf2;
     color: blue;
 }
 
-.red-text {
+/* Cases avec plus d'erreurs que de succès */
+.red-bg {
+    background-color: #ffcccc;
     color: red;
 }
 
-.black-text {
+/* Cases avec plus de succès que d'erreurs */
+.green-bg {
+    background-color: #ccffcc;
+    color: green;
+    font-weight: bold;
+}
+
+/* Cases neutres (pas de progression notable) */
+.neutral-bg {
+    background-color: #f0f8ff;
     color: black;
 }
-.green-text {
-    color: green;
+
+/* Style de l'icône de pouce en l'air */
+.consecutive-count {
+    font-size: 1.2em;
+    font-weight: bold;
 }
+
+.fas {
+    font-size: 1.5em;
+}
+
+/* Icône pour erreur */
+.fa-exclamation-circle {
+    color: red;
+}
+
 
 /* Cercle de décompte */
 .countdown {

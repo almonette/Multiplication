@@ -270,18 +270,21 @@ function displayMultiplicationStats() {
             const stats = JSON.parse(localStorage.getItem(key)) || { success: 0, errors: 0, consecutive: 0 };
             const cell = document.createElement('div');
             
-            // Définir la couleur du texte en fonction des conditions
+            // Définir le style et le contenu visuel des cases en fonction des statistiques
             if (stats.consecutive >= 3) {
-                cell.classList.add('blue-text');
+                cell.classList.add('blue-bg');
+                cell.innerHTML = '<i class="fas fa-thumbs-up"></i>'; // Icône pouce en l'air
             } else if (stats.errors > stats.success) {
-                cell.classList.add('red-text');
+                cell.classList.add('red-bg');
+                cell.innerHTML = '<i class="fas fa-exclamation-circle"></i>'; // Icône d'avertissement
             } else if (stats.success > stats.errors) {
-                cell.classList.add('green-text'); // Texte vert si succès > erreurs
+                cell.classList.add('green-bg');
+                cell.innerHTML = `<span class="consecutive-count">${stats.consecutive}</span>`;
             } else {
-                cell.classList.add('black-text');
+                cell.classList.add('neutral-bg');
+                cell.innerHTML = '-';
             }
-            
-            cell.innerText = `${stats.success}S, ${stats.errors}E, ${stats.consecutive}C`;
+
             statsTable.appendChild(cell);
         }
     }
