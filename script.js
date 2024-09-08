@@ -1,5 +1,6 @@
 const quizData = [];
 let quizLength = 20;
+let isRetryMode = false;
 let currentQuestionIndex = 0;
 let correctAnswers = 0;
 let missedQuestions = [];
@@ -99,11 +100,15 @@ function submitAnswer() {
 
     if (userAnswer === correctAnswer) {
         correctAnswers++;
-        updateStats(question, true);
+        if (!isRetryMode) { // Ne pas mettre à jour les stats en mode reprise
+            updateStats(question, true);
+        }
         showFeedback(true);
     } else {
-        missedQuestions.push({ num1: question.num1, num2: question.num2 });
-        updateStats(question, false);
+        if (!isRetryMode) { // Seulement ajouter à missedQuestions si ce n'est pas une reprise
+            missedQuestions.push({ num1: question.num1, num2: question.num2 });
+            updateStats(question, false);
+        }
         showFeedback(false);
     }
 
@@ -125,6 +130,8 @@ function updateProgressBar() {
 }
 
 function updateStats(question, isCorrect) {
+    if (isRetryMode) return; // Ne pas mettre à jour les stats pendant la reprise des erreurs
+
     const key = `${statsKeyPrefix}${question.num1}x${question.num2}`;
     const stats = JSON.parse(localStorage.getItem(key)) || { success: 0, errors: 0, consecutive: 0 };
 
@@ -133,11 +140,12 @@ function updateStats(question, isCorrect) {
         stats.consecutive++;
     } else {
         stats.errors++;
-        stats.consecutive = 0;
+        stats.consecutive = 0; // Réinitialiser les réussites consécutives en cas d'erreur
     }
 
     localStorage.setItem(key, JSON.stringify(stats));
 }
+
 
 function endQuiz() {
     saveResults();
@@ -147,8 +155,18 @@ function endQuiz() {
 function saveResults() {
     const results = getResults();
     const date = new Date().toLocaleString();
-    results.push({ date, correct: correctAnswers, missed: missedQuestions.length });
+    
+    const resultEntry = {
+        date,
+        correct: correctAnswers,
+        missed: quizData.length - correctAnswers, // Calculer le nombre de questions manquées
+        isRetry: isRetryMode // Indiquer si c'était une reprise d'erreurs
+    };
+
+    results.push(resultEntry);
     localStorage.setItem(localStorageKey, JSON.stringify(results));
+    
+    isRetryMode = false; // Réinitialiser le mode après la sauvegarde des résultats
 }
 
 function getResults() {
@@ -177,12 +195,14 @@ function showResults() {
 }
 
 function retryErrors() {
+    isRetryMode = true; // Activer le mode de reprise des erreurs
     quizData.length = 0;
-    quizData.push(...missedQuestions);
-    missedQuestions = [];
+    quizData.push(...missedQuestions); // Conserver les questions manquées
+    missedQuestions = []; // Réinitialiser les questions manquées
+
     currentQuestionIndex = 0;
     correctAnswers = 0;
-    quizLength = quizData.length;
+    quizLength = quizData.length; // Adapter la longueur du quiz
 
     document.getElementById('result').classList.add('hidden');
     showQuiz();
@@ -206,9 +226,10 @@ function displayLastResults() {
     const results = getResults();
     const lastResultsList = document.getElementById('lastResults');
     lastResultsList.innerHTML = results.slice(-10).map(result => `
-        <li>${result.date} - Correctes: ${result.correct}, Manquées: ${result.missed}</li>
+        <li>${result.date} - Correctes: ${result.correct}, Manquées: ${result.missed} ${result.isRetry ? '(Reprise des erreurs)' : ''}</li>
     `).join('');
 }
+
 
 function showFeedback(isCorrect) {
     const feedback = document.getElementById('feedback');
