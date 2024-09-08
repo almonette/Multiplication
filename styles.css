@@ -26,6 +26,7 @@ h1 {
     font-size: 1.2em;
     margin-bottom: 20px;
 }
+
 #statsTable {
     display: grid;
     grid-template-columns: repeat(14, 1fr); /* 13 colonnes pour les multiplications + 1 pour les indices des lignes */
@@ -86,7 +87,6 @@ h1 {
 .fa-exclamation-circle {
     color: red;
 }
-
 
 /* Cercle de décompte */
 .countdown {
