@@ -5,6 +5,19 @@ body {
     text-align: center;
 }
 
+
+.lastResults-block {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+
+    li{
+        text-align: left;
+    }
+}
+
+
 .container {
     margin: 20px;
 }
@@ -192,4 +205,85 @@ button:hover {
     0% { transform: scale(1); }
     50% { transform: scale(0.8); }
     100% { transform: scale(1); }
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    width: 80%;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover, .close:focus {
+    color: black;
+    cursor: pointer;
+}
+
+.hidden {
+    display: none;
+}
+
+.info-icon {
+    font-size: 0.8em;
+    color: #00796b; 
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.info-icon:hover {
+    color: #004d40;
+}
+
+h1 {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2em;
+    margin-bottom: 20px;
+}
+
+.legend-block {
+    margin-top: 20px;
+    text-align: left;
+}
+
+.legend-block h3 {
+    margin-bottom: 10px;
+}
+
+.legend-block ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.legend-block li {
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.legend-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    border-radius: 3px;
 }

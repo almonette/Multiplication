@@ -10,6 +10,9 @@ let points = 0;
 const fullCircle = 113;
 const localStorageKey = 'multiplicationQuizData';
 const statsKeyPrefix = 'multiplicationStats_';
+const modal = document.getElementById("descriptionModal");
+const openModalBtn = document.getElementById("openModal");
+const closeModalBtn = document.getElementById("closeModal");
 
 document.getElementById('startQuiz').addEventListener('click', startQuiz);
 document.getElementById('submitAnswer').addEventListener('click', submitAnswer);
@@ -18,6 +21,8 @@ document.getElementById('retryErrors').addEventListener('click', retryErrors);
 document.getElementById('answer').addEventListener('keyup', (event) => {
     if (event.key === 'Enter') submitAnswer();
 });
+
+
 
 function startQuiz() {
     quizLength = 20;
@@ -307,3 +312,13 @@ function formatDate(date) {
 }
 
 showMenu();
+
+document.getElementById('toggleDescription').addEventListener('click', function() {
+    const description = document.getElementById('description');
+    description.classList.toggle('hidden');
+});
+
+document.getElementById('toggleLegend').addEventListener('click', function() {
+    const legend = document.getElementById('legend');
+    legend.classList.toggle('hidden');
+});

@@ -10,13 +10,38 @@
 </head>
 <body>
     <div id="menu">
-        <h1>Pratique des Multiplications</h1>
+        <h1>Pratique des Multiplications 
+            <!-- Icône info pour À propos de l'application -->
+            <i id="toggleDescription" class="fas fa-info-circle info-icon"></i>
+        </h1>
+        <div id="description" class="hidden">
+            <p>Bienvenue sur notre application dédiée à l'apprentissage et la maîtrise des multiplications.</p>
+            <p>Contrairement à de nombreux outils qui mêlent des jeux interactifs ou des distractions visuelles,</p>
+            <p>notre approche est simple et directe : nous mettons l'accent sur la pratique pure et efficace.</p>
+            <p>Pas de fioritures, pas de mini-jeux, juste vous et vos multiplications en série.</p>
+        </div>
         <button id="startQuiz">Commencer un nouveau questionnaire</button>
         <h2>Derniers résultats</h2>
-        <ul>
-            <li id="lastResults"></li>
-        </ul>
-        <h2>Statistiques des Multiplications</h2>
+        <div class="lastResults-block">
+
+            <ul>
+                <li id="lastResults"></li>
+            </ul>
+        </div>
+        <h2>Statistiques des Multiplications 
+            <span id="toggleLegend" class="info-icon">
+                <i class="fas fa-info-circle"></i>
+            </span>
+        </h2>
+        <div id="legend" class="legend-block hidden">
+            <h3>Légende</h3>
+            <ul>
+                <li><span class="legend-icon blue-bg"></span> <strong>Bleu</strong> : Maîtrisé. 3 réussites consécutives pour cette multiplication. <strong>Elle ne sera plus demandée dans le questionnaire car elle est considérée comme acquise !</strong></li>
+                <li><span class="legend-icon green-bg"></span> <strong>Vert</strong> : Réussite. Vous avez plus de réussites que d'erreurs pour cette multiplication.</li>
+                <li><span class="legend-icon red-bg"></span> <strong>Rouge</strong> : À pratiquer. Vous avez plus d'erreurs que de réussites pour cette multiplication.</li>
+                <li><span class="legend-icon neutral-bg">-</span> <strong>Neutre</strong> : Pas encore de progression notable pour cette multiplication.</li>
+            </ul>
+        </div>
         <div id="statsTable"></div>
     </div>
         
