@@ -275,9 +275,10 @@ h1 {
 }
 
 .legend-block li {
-    margin-bottom: 5px;
     display: flex;
     align-items: center;
+    flex-wrap: wrap; /* Permet au texte de se déplacer sous l'icône en cas de manque d'espace */
+    margin-bottom: 10px;
 }
 
 .legend-icon {
@@ -286,4 +287,19 @@ h1 {
     height: 20px;
     margin-right: 10px;
     border-radius: 3px;
+}
+
+.legend-text {
+    flex: 1; /* Assure que le texte prenne tout l'espace restant */
+}
+
+/* Gestion du wrapping sur petits écrans */
+@media (max-width: 600px) {
+    .legend-block li {
+        justify-content: flex-start;
+    }
+
+    .legend-text {
+        margin-top: 5px; /* Pour espacer le texte de l'icône et du titre */
+    }
 }
