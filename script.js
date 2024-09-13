@@ -7,9 +7,9 @@ let missedQuestions = [];
 let timerInterval;
 let timeLeft = 10;
 let points = 0;
-let multiplicandeMinInput = document.getElementById('multiplicandeMin');
-let multiplicandeMaxInput = document.getElementById('multiplicandeMax');
-let multiplicateurMaxInput = document.getElementById('multiplicateurMax');
+let multiplicandeMinRange = document.getElementById('multiplicandeMinRange');
+let multiplicandeMaxRange = document.getElementById('multiplicandeMaxRange');
+let multiplicandeRangeValue = document.getElementById('multiplicandeRangeValue');
 const fullCircle = 113;
 const localStorageKey = 'multiplicationQuizData';
 const statsKeyPrefix = 'multiplicationStats_';
@@ -24,8 +24,6 @@ document.getElementById('retryErrors').addEventListener('click', retryErrors);
 document.getElementById('answer').addEventListener('keyup', (event) => {
     if (event.key === 'Enter') submitAnswer();
 });
-
-
 
 function startQuiz() {
     quizLength = 20;

@@ -21,16 +21,23 @@
             <p>Pas de fioritures, pas de mini-jeux, juste vous et vos multiplications en série.</p>
         </div>
         <h2>Filtres de Multiplications</h2>
-<div id="filters">
-    <label for="multiplicandeMin">Multiplicande Min:</label>
-    <input type="number" id="multiplicandeMin" name="multiplicandeMin" value="0" min="0" max="12">
-    <label for="multiplicandeMax">Multiplicande Max:</label>
-    <input type="number" id="multiplicandeMax" name="multiplicandeMax" value="12" min="0" max="12">
+        <div id="filters">
+            <div class="filter">
 
-    <label for="multiplicateurMax">Multiplicateur Max:</label>
-    <input type="number" id="multiplicateurMax" name="multiplicateurMax" value="10" min="0" max="12">
-</div>
+                <label for="multiplicandeMin">Plage Multiplicande (1e chiffre) Min:</label>
+                <input style="width: 40px;" type="number" id="multiplicandeMin" name="multiplicandeMin" value="0" min="0" max="12">
+                <label for="multiplicandeMax">de Max:</label>
+                <input style="width: 40px;" type="number" id="multiplicandeMax" name="multiplicandeMax" value="12" min="0" max="12">
+            
+            </div>
+            <div class="filter">
+
+                <label for="multiplicateurMax">Multiplicateur (2e chiffre) Max:</label>
+                <input style="width: 40px;" type="number" id="multiplicateurMax" name="multiplicateurMax" value="10" min="0" max="12">
+            </div>
+        </div>
         <button id="startQuiz">Commencer un nouveau questionnaire</button>
+        <hr style="width: 600px; align-items: center;">
         <h2>Derniers résultats</h2>
         <div class="lastResults-block">
 
