@@ -20,20 +20,19 @@
             <p>notre approche est simple et directe : nous mettons l'accent sur la pratique pure et efficace.</p>
             <p>Pas de fioritures, pas de mini-jeux, juste vous et vos multiplications en série.</p>
         </div>
-        <h2>Filtres de Multiplications</h2>
+        <h3>&#9660; Ajustements de Difficulté &#9660;</h3>
         <div id="filters">
             <div class="filter">
 
-                <label for="multiplicandeMin">Plage Multiplicande (1e chiffre) Min:</label>
+                <label for="multiplicandeMin"> (&nbsp;</label>
                 <input style="width: 40px;" type="number" id="multiplicandeMin" name="multiplicandeMin" value="0" min="0" max="12">
-                <label for="multiplicandeMax">de Max:</label>
+                <label for="multiplicandeMax">&nbsp;à&nbsp;</label>
                 <input style="width: 40px;" type="number" id="multiplicandeMax" name="multiplicandeMax" value="12" min="0" max="12">
-            
-            </div>
-            <div class="filter">
+                <span>&nbsp;) <strong>X</strong></span>
 
-                <label for="multiplicateurMax">Multiplicateur (2e chiffre) Max:</label>
-                <input style="width: 40px;" type="number" id="multiplicateurMax" name="multiplicateurMax" value="10" min="0" max="12">
+                <label for="multiplicateurMax">(&nbsp;</label>
+                <input style="width: 40px;" type="number" id="multiplicateurMax" name="multiplicateurMax" value="12" min="0" max="12">
+                <span>Max ) </span>
             </div>
         </div>
         <button id="startQuiz">Commencer un nouveau questionnaire</button>
