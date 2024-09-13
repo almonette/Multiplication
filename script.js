@@ -7,6 +7,9 @@ let missedQuestions = [];
 let timerInterval;
 let timeLeft = 10;
 let points = 0;
+let multiplicandeMinInput = document.getElementById('multiplicandeMin');
+let multiplicandeMaxInput = document.getElementById('multiplicandeMax');
+let multiplicateurMaxInput = document.getElementById('multiplicateurMax');
 const fullCircle = 113;
 const localStorageKey = 'multiplicationQuizData';
 const statsKeyPrefix = 'multiplicationStats_';
@@ -32,9 +35,39 @@ function startQuiz() {
     missedQuestions = [];
     currentQuestionIndex = 0;
     correctAnswers = 0;
-    for (let i = 0; i < quizLength; i++) {
-        quizData.push(generateQuestion());
+
+    // Obtenir les valeurs de filtrage
+    const multiplicandeMin = parseInt(multiplicandeMinInput.value);
+    const multiplicandeMax = parseInt(multiplicandeMaxInput.value);
+    const multiplicateurMax = parseInt(multiplicateurMaxInput.value);
+
+    // Générer les questions en tenant compte des filtres
+    let availableQuestions = [];
+    for (let i = multiplicandeMin; i <= multiplicandeMax; i++) {
+        for (let j = 0; j <= multiplicateurMax; j++) {
+            if (!isMasteredQuestion(i, j)) {
+                availableQuestions.push({ num1: i, num2: j });
+            }
+        }
     }
+
+    // Vérification du nombre de questions disponibles
+    if (availableQuestions.length === 0) {
+        alert("Toutes les multiplications dans cette plage sont maîtrisées ! Félicitations, vous avez battu le jeu !");
+        return;
+    }
+
+    if (availableQuestions.length < quizLength) {
+        quizLength = availableQuestions.length; // Ajuste le nombre de questions au max dispo
+        // alert(`Seulement ${quizLength} questions disponibles, ajustement automatique.`);
+    }
+
+    while (quizData.length < quizLength) {
+        const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+        const selectedQuestion = availableQuestions.splice(randomIndex, 1)[0]; // Retirer pour éviter les doublons
+        quizData.push(selectedQuestion);
+    }
+
     showQuiz();
     displayQuestion();
 }
