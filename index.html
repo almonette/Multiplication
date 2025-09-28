@@ -1,109 +1,369 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pratique des Multiplications</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
-</head>
-<body>
-    <div id="menu">
-        <h1>Pratique des Multiplications 
-            <!-- Icône info pour À propos de l'application -->
-            <i id="toggleDescription" class="fas fa-info-circle info-icon"></i>
-        </h1>
-        <div id="description" class="hidden">
-            <p>Bienvenue sur notre application dédiée à l'apprentissage et la maîtrise des multiplications.</p>
-            <p>Contrairement à de nombreux outils qui mêlent des jeux interactifs ou des distractions visuelles,</p>
-            <p>notre approche est simple et directe : nous mettons l'accent sur la pratique pure et efficace.</p>
-            <p>Pas de fioritures, pas de mini-jeux, juste vous et vos multiplications en série.</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maths — Pratique (× + − ÷)</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">🧮 Maths Pratique</div>
+
+      <!-- NOUVEAU : sélecteur d’opération centrale, centré -->
+      <div class="focus-op" role="group" aria-label="Opération centrale">
+        <div class="focus-title">
+          Opération centrale : <b id="focusOpLabel">Mix (4 opérations)</b>
         </div>
-        <h3>&#9660; Ajustements de Difficulté &#9660;</h3>
-        <div id="filters">
-            <div class="filter">
+        <div class="seg" id="globalOpSeg">
+          <button class="seg-btn" data-op="mix">Mix</button>
+          <button class="seg-btn" data-op="mul">×</button>
+          <button class="seg-btn" data-op="add">+</button>
+          <button class="seg-btn" data-op="sub">−</button>
+          <button class="seg-btn" data-op="div">÷</button>
+        </div>
+        <div class="focus-sub">
+          Ce choix pilote le <b>Quiz</b>, les <b>Statistiques</b>, le <b>Rapport</b> et le
+          <b>Mode libre</b>.
+        </div>
+      </div>
 
-                <label for="multiplicandeMin"> (</label>
-                <input style="width: 40px;" type="number" id="multiplicandeMin" name="multiplicandeMin" value="0" min="0" max="12">
-                <label for="multiplicandeMax">à</label>
-                <input style="width: 40px;" type="number" id="multiplicandeMax" name="multiplicandeMax" value="12" min="0" max="12">
-                <span>) <strong>X</strong></span>
+      <div class="profile">
+        <input id="userName" type="text" placeholder="Prénom" />
+        <button id="saveUser" class="btn sm">OK</button>
+      </div>
+    </header>
 
-                <label for="multiplicateurMax">(</label>
-                <input style="width: 40px;" type="number" id="multiplicateurMax" name="multiplicateurMax" value="12" min="0" max="12">
-                <span>Max ) </span>
+    <nav class="tabs">
+      <button class="tab active" data-tab="dashboard">Tableau de bord</button>
+      <button class="tab" data-tab="pratique">Pratique</button>
+      <button class="tab" data-tab="libre">Mode libre</button>
+      <button class="tab" data-tab="reglages">Réglages</button>
+      <button class="tab" data-tab="rapport">Rapport</button>
+      <button class="tab" data-tab="aide">Aide</button>
+    </nav>
+
+    <!-- ===== Tableau de bord ===== -->
+    <section id="dashboard" class="tab-panel active">
+      <div class="panel">
+        <div class="cards kpi-cards">
+          <div class="card kpi">
+            <div class="kpi-label">Taux de réussite</div>
+            <div class="kpi-value" id="kpiRate">—</div>
+            <div class="kpi-sub" id="kpiAttempts">—</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Faits maîtrisés</div>
+            <div class="kpi-value ok" id="kpiMastered">—</div>
+            <div class="kpi-sub">3 réussites consécutives</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Faits faibles</div>
+            <div class="kpi-value warn" id="kpiWeak">—</div>
+            <div class="kpi-sub">plus d’erreurs que de succès</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Dernière session</div>
+            <div class="kpi-value" id="kpiLast">—</div>
+            <div class="kpi-sub" id="kpiLastWhen">—</div>
+          </div>
+        </div>
+
+        <div class="row gap top">
+          <div class="card flex1">
+            <h3>Lancer un quiz</h3>
+            <div class="row gap wrap">
+              <button id="startQuiz" class="btn lg">Démarrer</button>
+              <div id="quickHint" class="hint">
+                Utilise <b>Réglages</b> pour choisir opérations, plages, timer…
+              </div>
             </div>
-        </div>
-        <button id="startQuiz">Commencer un nouveau questionnaire</button>
-        <hr style="width: 600px; align-items: center;">
-        <h2>Derniers résultats</h2>
-        <div class="lastResults-block">
 
-            <ul>
-                <li id="lastResults"></li>
-            </ul>
-        </div>
-        <h2>Statistiques des Multiplications 
-            <span id="toggleLegend" class="info-icon">
-                <i class="fas fa-info-circle"></i>
-            </span>
-        </h2>
-        <div id="legend" class="legend-block hidden">
-            <h3>Légende</h3>
-            <ul>
-                <li>
-                    <span class="legend-icon blue-bg"></span> 
-                    <strong>Bleu :&nbsp;</strong> 
-                    Maîtrisé. 3 réussites consécutives pour cette multiplication. 
-                    <strong>Elle ne sera plus demandée dans le questionnaire car elle est considérée comme acquise !</strong>
-                </li>
-                <li>
-                    <span class="legend-icon green-bg"></span> 
-                    <strong>Vert :&nbsp;</strong>
-                    Réussite. Vous avez plus de réussites que d'erreurs pour cette multiplication.
-                </li>
-                <li>
-                    <span class="legend-icon red-bg"></span> 
-                    <strong>Rouge :&nbsp;</strong>
-                    À pratiquer. Vous avez plus d'erreurs que de réussites pour cette multiplication.
-                </li>
-                <li>
-                    <span class="legend-icon neutral-bg">-</span> 
-                    <strong>Neutre :&nbsp;</strong>
-                    Pas encore de progression notable pour cette multiplication.
-                </li>
-            </ul>
-        </div>
-        <div id="statsTable"></div>
-    </div>
-        
-    <div id="quiz" class="hidden">
-        <div id="progress-container">
-            <div id="progress-bar"></div>
-        </div>
-        <div id="progressTracker"></div> 
-        <h1 id="question"></h1>
-        <div id="timer" class="countdown">
-            <svg width="80" height="80" viewBox="0 0 40 40">
-                <circle cx="20" cy="20" r="18"></circle> 
-            </svg>
-            <div id="timeDisplay" class="time-display">10</div>
-        </div>
-        <div id="pointsDisplay" class="points-display">Points : 0</div>
-        <input type="number" id="answer" placeholder="Votre réponse" min="0" max="144" inputmode="numeric" pattern="[0-9]*">
-        <button id="submitAnswer">Confirmer</button>
-        <div id="feedback" class="hidden"></div>
-        <div id="progress"></div>
-    </div>
+            <h4 style="margin-top: 10px">Derniers résultats</h4>
+            <ul id="lastResults" class="last"></ul>
+          </div>
 
-    <div id="result" class="hidden">
-        <h1>Résultat</h1>
-        <ul id="missedQuestions"></ul>
-        <button id="backToMenu">Retour au menu</button>
-        <button id="retryErrors" class="hidden">Revoir les erreurs</button>
-    </div>
+          <div class="card flex1">
+            <h3>Statistiques par opération</h3>
+            <div class="op-switch">
+              <button class="opbtn active" data-op="mul">×</button>
+              <button class="opbtn" data-op="add">+</button>
+              <button class="opbtn" data-op="sub">−</button>
+              <button class="opbtn" data-op="div">÷</button>
+            </div>
+            <div id="statsGrid" class="grid14"></div>
+
+            <div class="legend">
+              <div><span class="legend-icon blue-bg"></span> Maîtrisé (3 succès d’affilée)</div>
+              <div><span class="legend-icon green-bg"></span> Succès > erreurs</div>
+              <div><span class="legend-icon red-bg"></span> À pratiquer</div>
+              <div><span class="legend-icon neutral-bg"></span> Neutre</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Pratique (Quiz) ===== -->
+    <section id="pratique" class="tab-panel">
+      <div class="panel">
+        <div id="quizBox" class="card">
+          <div id="progress-container"><div id="progress-bar"></div></div>
+          <div class="row between">
+            <div id="progressTracker" class="muted">Question 0/0</div>
+            <div id="pointsDisplay" class="points-display">Points : 0</div>
+          </div>
+
+          <div class="row center">
+            <div id="timer" class="countdown">
+              <svg width="80" height="80" viewBox="0 0 40 40">
+                <circle cx="20" cy="20" r="18"></circle>
+              </svg>
+              <div id="timeDisplay" class="time-display">10</div>
+            </div>
+          </div>
+
+          <h1 id="question">—</h1>
+          <div class="row center gap">
+            <input type="number" id="answer" placeholder="Réponse" min="0" inputmode="numeric" />
+            <button id="submitAnswer" class="btn">Confirmer</button>
+          </div>
+
+          <div id="feedback" class="feedback hidden"></div>
+        </div>
+
+        <div id="resultBox" class="card hidden">
+          <h2 id="resultTitle">Résultat</h2>
+          <ul id="missedQuestions"></ul>
+          <div class="row gap wrap">
+            <button id="retryErrors" class="btn">Revoir les erreurs</button>
+            <button id="backToMenu" class="btn ghost">Retour au tableau de bord</button>
+            <button id="newSession" class="btn">Nouvelle session</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Mode libre ===== -->
+    <section id="libre" class="tab-panel">
+      <div class="panel">
+        <div class="card">
+          <h3>Feuille libre</h3>
+          <div class="row gap wrap">
+            <label
+              >Opération
+              <select id="libOp">
+                <option value="mul">× multiplication</option>
+                <option value="add">+ addition</option>
+                <option value="sub">− soustraction</option>
+                <option value="div">÷ division</option>
+              </select>
+            </label>
+            <label
+              >Famille
+              <select id="libFam"></select>
+            </label>
+            <button id="libGen" class="btn">Générer 10 questions</button>
+            <button id="libCheck" class="btn ghost">Corriger</button>
+          </div>
+          <div id="libSheet" class="sheet hidden"></div>
+          <div id="libFeedback" class="feedback"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Réglages ===== -->
+    <section id="reglages" class="tab-panel">
+      <div class="panel">
+        <div class="card">
+          <h3>Opérations & plages</h3>
+
+          <div class="row gap wrap">
+            <label><input type="checkbox" id="op_mul" checked /> ×</label>
+            <label><input type="checkbox" id="op_add" /> +</label>
+            <label><input type="checkbox" id="op_sub" /> −</label>
+            <label><input type="checkbox" id="op_div" /> ÷</label>
+          </div>
+
+          <div class="groups">
+            <div class="group">
+              <h4>Multiplication ×</h4>
+              (a : <input id="mul_a_min" type="number" value="0" /> à
+              <input id="mul_a_max" type="number" value="12" />) × (b : 0 à
+              <input id="mul_b_max" type="number" value="12" />)
+            </div>
+
+            <div class="group">
+              <h4>Addition +</h4>
+              a : <input id="add_a_min" type="number" value="0" /> à
+              <input id="add_a_max" type="number" value="20" />, b : 0 à
+              <input id="add_b_max" type="number" value="20" />
+            </div>
+
+            <div class="group">
+              <h4>Soustraction −</h4>
+              a : <input id="sub_a_min" type="number" value="0" /> à
+              <input id="sub_a_max" type="number" value="20" />, b : 0 à
+              <input id="sub_b_max" type="number" value="20" />
+              <label class="row gap" style="margin-top: 6px">
+                <input type="checkbox" id="sub_nonneg" checked /> Résultat ≥ 0
+              </label>
+            </div>
+
+            <div class="group">
+              <h4>Division ÷</h4>
+              dividende max <input id="div_a_max" type="number" value="144" />, diviseur 1 à
+              <input id="div_b_max" type="number" value="12" />
+              <div class="hint">On ne propose que des divisions à quotient entier.</div>
+            </div>
+          </div>
+
+          <div class="row gap wrap">
+            <label
+              >Questions / session
+              <input id="qCount" type="number" min="5" max="50" value="20" />
+            </label>
+            <label
+              >Timer (sec)
+              <input id="timerSec" type="number" min="0" max="60" value="10" />
+            </label>
+            <label
+              ><input type="checkbox" id="excludeMastered" checked /> Exclure les faits
+              maîtrisés</label
+            >
+          </div>
+
+          <div class="row gap wrap">
+            <label
+              >Preset :
+              <select id="presetSelect">
+                <option value="">— choisir —</option>
+                <option value="g3_mul_0_12">Gr.3 Multiplications 0–12</option>
+                <option value="g3_add_sub_0_20">Gr.3 Additions/Soustractions 0–20</option>
+                <option value="mix_all">Mix 4 ops (bases)</option>
+              </select>
+            </label>
+            <button id="saveSettings" class="btn">Enregistrer</button>
+            <button id="resetProgress" class="btn ghost">Réinitialiser progression</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Rapport ===== -->
+    <section id="rapport" class="tab-panel">
+      <div class="panel">
+        <div class="cards kpi-cards">
+          <div class="card kpi">
+            <div class="kpi-label">Taux global</div>
+            <div class="kpi-value" id="rGlobalRate">—</div>
+            <div class="kpi-sub" id="rGlobalAttempts">—</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Maîtrisés</div>
+            <div class="kpi-value ok" id="rMasteredCount">—</div>
+            <div class="kpi-sub">3 succès consécutifs</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Faiblesses</div>
+            <div class="kpi-value warn" id="rWeakCount">—</div>
+            <div class="kpi-sub">succès &lt; erreurs</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Points (dernière)</div>
+            <div class="kpi-value" id="rLastPoints">—</div>
+            <div class="kpi-sub" id="rLastWhen">—</div>
+          </div>
+        </div>
+
+        <div class="row wrap gap">
+          <div class="card flex1">
+            <h3>Faiblesses (Top 10)</h3>
+            <div id="rWeak" class="list-rows"></div>
+          </div>
+          <div class="card flex1">
+            <h3>Maîtrisés (Top 10)</h3>
+            <div id="rMastered" class="list-rows"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Détail par fait</h3>
+          <label class="row gap" style="font-size: 12px; color: var(--muted)">
+            <input type="checkbox" id="rDetailsAll" /> Afficher aussi les faits jamais tentés
+          </label>
+          <div class="row-detail header">
+            <div>Fait</div>
+            <div>Succès</div>
+            <div>Erreurs</div>
+            <div>Total</div>
+            <div>Progression</div>
+            <div>Taux</div>
+          </div>
+          <div id="rDetails" class="list-rows"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Aide ===== -->
+    <section id="aide" class="tab-panel">
+      <div class="panel help">
+        <h2>Guide</h2>
+        <p class="sub">Même esprit que <b>Verbes</b> : clair, rapide, adaptatif.</p>
+        <details open>
+          <summary>🎯 Quiz adaptatif</summary>
+          <ul>
+            <li>Exclut (option) les faits <b>maîtrisés</b> (3 succès d’affilée).</li>
+            <li>Pondère les faits plus <b>difficiles</b> (plus d’erreurs).</li>
+            <li>Timer et points configurables.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>✍️ Mode libre</summary>
+          <ul>
+            <li>Choisis opération + <b>famille</b> (ex. “×7”, “+9”, “÷ par 8”).</li>
+            <li>Génère une feuille de 10, corrige avec feedback et enregistre la progression.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>📊 Rapport</summary>
+          <ul>
+            <li>KPIs, Top faiblesses/maîtrisés, détail par fait.</li>
+            <li>
+              Couleurs : <span style="color: #f87171">rouge</span> &lt;50%,
+              <span style="color: #fbbf24">orange</span> &lt;75%,
+              <span style="color: #22c55e">vert</span> ≥75%,
+              <span style="color: #60a5fa">bleu</span> maîtrisé.
+            </li>
+          </ul>
+        </details>
+        <details>
+          <summary>🛠️ Réglages</summary>
+          <ul>
+            <li>Opérations, plages, timer, longueur, “exclure maîtrisés”.</li>
+            <li>Presets rapides pour démarrer.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>👤 Profils</summary>
+          <ul>
+            <li>Chaque prénom a sa progression, ses réglages, ses résultats.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>🔒 Données</summary>
+          <ul>
+            <li>Tout reste dans le navigateur (localStorage).</li>
+          </ul>
+        </details>
+      </div>
+    </section>
 
     <script src="script.js"></script>
-</body>
+  </body>
 </html>
