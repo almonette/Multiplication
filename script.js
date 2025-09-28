@@ -1,45 +1,51 @@
 /* ============================================================================
-   Maths — × + − ÷ (UI façon “Verbes”) — version patchée
-   - Opération globale (affecte quiz, dashboard, rapport, libre par défaut)
-   - Stats : erreur => compteur reset + "X" rouge, succès => 1,2,3 => 👍 (maîtrisé)
-   - Jamais re-proposé au quiz après maîtrise (3 consécutifs)
-   - Pratique : bouton "Nouvelle session"
-   - Libre : génère TOUTES les combinaisons 1..10 de la famille, en désordre, sans doublon
+   Maths — × + − ÷ (UI façon “Verbes”) — version robuste
+   - Opération centrale (impacte quiz, dashboard, rapport, libre)
+   - Sélecteurs DOM SÉCURISÉS (pas d'erreurs classList of null)
+   - Pratique : bouton “Démarrer” direct + états propres
+   - Libre : 1..10 en désordre, sans doublon (famille remplie)
+   - Réglages : opérations désactivées si ≠ Mix (+ message)
    ============================================================================ */
-(() => {
-  ('use strict');
+(function () {
+  'use strict';
 
-  /* Helpers + LS */
+  /* ---------- Helpers & LS ---------- */
   const $ = (id) => document.getElementById(id);
-  const nowISO = () => new Date().toISOString();
-  const fmtDate = (d) => {
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
-      d.getHours()
-    )}h${pad(d.getMinutes())}`;
-  };
-  function loadLS(k, f) {
+  const fmtDate = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(
+      2,
+      '0'
+    )} ${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`;
+  const loadLS = (k, f) => {
     try {
       return JSON.parse(localStorage.getItem(k)) ?? f;
     } catch {
       return f;
     }
-  }
-  function saveLS(k, o) {
-    localStorage.setItem(k, JSON.stringify(o));
-  }
+  };
+  const saveLS = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+  const clamp = (v, min, max) => {
+    v = parseInt(v, 10);
+    if (isNaN(v)) v = min;
+    return Math.max(min, Math.min(max, v));
+  };
+  const shuffle = (a) => {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
 
-  /* Profils */
+  /* ---------- Profils ---------- */
   let PROFILE_ID = loadLS('math_profile_id_v1', 'default');
   const keyP = (base) => `${base}__${PROFILE_ID}`;
-
   const LS_KEYS = {
     settings: 'math_settings_v1',
     results: 'math_results_v1',
     stats: 'math_stats_v1',
     user: 'math_user_name_v1',
   };
-
   function switchProfile(name) {
     PROFILE_ID =
       (name || 'default')
@@ -51,10 +57,10 @@
     renderAll();
   }
 
-  /* Données & état */
+  /* ---------- État ---------- */
   const DEFAULT_SETTINGS = {
-    globalOp: 'mix', // 'mix' | 'mul' | 'add' | 'sub' | 'div'
-    ops: { mul: true, add: false, sub: false, div: false },
+    globalOp: 'mix',
+    ops: { mul: true, add: true, sub: true, div: true }, // en Mix on peut désactiver
     ranges: {
       mul: { aMin: 0, aMax: 12, bMax: 12 },
       add: { aMin: 0, aMax: 20, bMax: 20 },
@@ -67,14 +73,14 @@
   };
 
   let settings = DEFAULT_SETTINGS;
-  let results = [];
-  let stats = {}; // k => {success, errors, consecutive, last:'ok'|'ko'|null, errRun}
   let staged = null;
+  let results = [];
+  let stats = {}; // k => {success, errors, consecutive, last, errRun}
 
   function loadState() {
     settings = loadLS(keyP(LS_KEYS.settings), DEFAULT_SETTINGS);
-    // migration si vieux profil sans globalOp :
     if (!settings.globalOp) settings.globalOp = 'mix';
+    if (!settings.ops) settings.ops = { mul: true, add: true, sub: true, div: true };
     results = loadLS(keyP(LS_KEYS.results), []);
     stats = loadLS(keyP(LS_KEYS.stats), {});
     staged = JSON.parse(JSON.stringify(settings));
@@ -84,86 +90,96 @@
     saveLS(keyP(LS_KEYS.settings), settings);
     renderAll();
   }
-  function saveResults() {
-    saveLS(keyP(LS_KEYS.results), results);
-  }
-  function saveStats() {
-    saveLS(keyP(LS_KEYS.stats), stats);
-  }
+  const saveResults = () => saveLS(keyP(LS_KEYS.results), results);
+  const saveStats = () => saveLS(keyP(LS_KEYS.stats), stats);
 
-  /* Onglets & bootstrap */
+  /* ---------- Bootstrap ---------- */
   document.addEventListener('DOMContentLoaded', bootstrap);
+
   function bootstrap() {
+    // Tabs (robuste aux id manquants / casse)
     document.querySelectorAll('.tab').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach((b) => b.classList.remove('active'));
         document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
         btn.classList.add('active');
-        $(btn.dataset.tab).classList.add('active');
-        if (btn.dataset.tab === 'dashboard') {
-          renderDashboard();
-        }
-        if (btn.dataset.tab === 'rapport') {
-          renderReport();
-          renderDetails(false);
-        }
-        if (btn.dataset.tab === 'libre') {
-          buildLibreFamilies();
-        }
+        const id = (btn.dataset.tab || '').toLowerCase();
+        const panel = document.getElementById(id);
+        if (panel) panel.classList.add('active');
+        refreshActiveTab();
       });
     });
 
-    // profil
-    $('saveUser').onclick = () => {
+    // Profil
+    $('saveUser')?.addEventListener('click', () => {
       const name = $('userName').value.trim();
       saveLS(LS_KEYS.user, name);
       switchProfile(name);
       alert('Profil chargé pour ' + (name || '👋'));
-    };
+    });
 
-    // op globale
-    // $('globalOpSel').onchange = () => {
-    //   staged.globalOp = $('globalOpSel').value;
-    //   saveSettingsCommit(); // on commit direct ce choix global (UX attendue)
-    // };
-
+    // Bindings
+    bindGlobalOpUI();
     bindSettingsUI();
     bindQuizUI();
     bindLibreUI();
 
+    // État initial
     loadState();
-    initGlobalOpUI();
-    $('userName').value = loadLS(LS_KEYS.user, '') || '';
-    // $('globalOpSel').value = settings.globalOp || 'mix';
+    const uname = loadLS(LS_KEYS.user, '') || '';
+    if ($('userName')) $('userName').value = uname;
+
+    updateGlobalOpUI(settings.globalOp);
+    // Pré-remplir famille du mode libre au premier affichage
+    buildLibreFamilies();
+
     renderAll();
+  }
+
+  /* ---------- Rafraîchir l’onglet actif ---------- */
+  function refreshActiveTab() {
+    if ($('dashboard')?.classList.contains('active')) renderDashboard();
+    if ($('rapport')?.classList.contains('active')) {
+      renderReport();
+      renderDetails(false);
+    }
+    if ($('libre')?.classList.contains('active')) buildLibreFamilies();
+    if ($('pratique')?.classList.contains('active')) renderPracticeState();
+    if ($('reglages')?.classList.contains('active')) renderSettings();
   }
 
   function renderAll() {
     renderSettings();
     renderDashboard();
     renderStatsGrid(currentOpForView());
+    renderPracticeState();
   }
 
-  // --- Opération centrale : UI segmentée ---
-  function initGlobalOpUI() {
+  /* ---------- Opération centrale ---------- */
+  function bindGlobalOpUI() {
     document.querySelectorAll('#globalOpSeg .seg-btn').forEach((btn) => {
       btn.addEventListener('click', () => setGlobalOp(btn.dataset.op));
     });
-    updateGlobalOpUI(settings.globalOp || 'mix');
   }
   function setGlobalOp(op) {
     if (!op) return;
-    staged.globalOp = op;
-    settings.globalOp = op; // on commit tout de suite (choix central)
+    settings.globalOp = op;
+    if (op !== 'mix') {
+      // verrouille aux seules opérations de l’op centrale
+      settings.ops = { mul: false, add: false, sub: false, div: false };
+      settings.ops[op] = true;
+    }
     saveLS(keyP(LS_KEYS.settings), settings);
+    staged = JSON.parse(JSON.stringify(settings));
     updateGlobalOpUI(op);
-    renderAll(); // impacte quiz, stats, rapport, libre par défaut
+    renderAll();
+    refreshActiveTab();
   }
   function updateGlobalOpUI(op) {
     document
       .querySelectorAll('#globalOpSeg .seg-btn')
       .forEach((b) => b.classList.toggle('active', b.dataset.op === op));
-    const label = document.getElementById('focusOpLabel');
+    const label = $('focusOpLabel');
     if (label)
       label.innerHTML =
         op === 'mix'
@@ -176,9 +192,9 @@
           ? '− Soustraction'
           : '÷ Division';
   }
-
-  /* Faits & stats */
   const OP_LABEL = { mul: '×', add: '+', sub: '−', div: '÷' };
+
+  /* ---------- Stats & faits ---------- */
   function keyOf(op, a, b) {
     if (op === 'mul' || op === 'add') {
       const a1 = Math.min(a, b),
@@ -192,8 +208,8 @@
     return stats[k] || { success: 0, errors: 0, consecutive: 0, last: null, errRun: 0 };
   }
   function updateStat(op, a, b, ok) {
-    const k = keyOf(op, a, b);
-    const st = getStat(op, a, b);
+    const k = keyOf(op, a, b),
+      st = getStat(op, a, b);
     if (ok) {
       st.success++;
       st.consecutive++;
@@ -208,62 +224,54 @@
     stats[k] = st;
     saveStats();
   }
-  function isMastered(op, a, b) {
-    return getStat(op, a, b).consecutive >= 3;
-  }
-  function isWeak(op, a, b) {
+  const isMastered = (op, a, b) => getStat(op, a, b).consecutive >= 3;
+  const rate = (op, a, b) => {
     const s = getStat(op, a, b);
-    return s.errors > s.success;
-  }
-  function rate(op, a, b) {
-    const s = getStat(op, a, b);
-    const tot = s.success + s.errors;
-    return tot ? s.success / tot : null;
-  }
+    const t = s.success + s.errors;
+    return t ? s.success / t : null;
+  };
+  const opAllowed = (op) =>
+    settings.globalOp === 'mix' ? settings.ops[op] : op === settings.globalOp;
 
-  /* Génération */
-  function opAllowed(op) {
-    return staged.globalOp === 'mix' ? true : op === staged.globalOp;
-  }
+  /* ---------- Génération quiz ---------- */
   function buildPool() {
     const pool = [];
-    const ex = true; // "jamais re-proposé" une fois maîtrisé
-
-    if (staged.ops.mul && opAllowed('mul')) {
-      const R = staged.ranges.mul;
+    const EXCLUDE = true;
+    if (opAllowed('mul')) {
+      const R = settings.ranges.mul;
       for (let a = R.aMin; a <= R.aMax; a++) {
         for (let b = 0; b <= R.bMax; b++) {
-          if (ex && isMastered('mul', a, b)) continue;
+          if (EXCLUDE && isMastered('mul', a, b)) continue;
           pool.push({ op: 'mul', a, b, w: weight('mul', a, b) });
         }
       }
     }
-    if (staged.ops.add && opAllowed('add')) {
-      const R = staged.ranges.add;
+    if (opAllowed('add')) {
+      const R = settings.ranges.add;
       for (let a = R.aMin; a <= R.aMax; a++) {
         for (let b = 0; b <= R.bMax; b++) {
-          if (ex && isMastered('add', a, b)) continue;
+          if (EXCLUDE && isMastered('add', a, b)) continue;
           pool.push({ op: 'add', a, b, w: weight('add', a, b) });
         }
       }
     }
-    if (staged.ops.sub && opAllowed('sub')) {
-      const R = staged.ranges.sub;
+    if (opAllowed('sub')) {
+      const R = settings.ranges.sub;
       for (let a = R.aMin; a <= R.aMax; a++) {
         for (let b = 0; b <= R.bMax; b++) {
           if (R.nonneg && a - b < 0) continue;
-          if (ex && isMastered('sub', a, b)) continue;
+          if (EXCLUDE && isMastered('sub', a, b)) continue;
           pool.push({ op: 'sub', a, b, w: weight('sub', a, b) });
         }
       }
     }
-    if (staged.ops.div && opAllowed('div')) {
-      const R = staged.ranges.div;
+    if (opAllowed('div')) {
+      const R = settings.ranges.div;
       for (let b = 1; b <= R.bMax; b++) {
         for (let q = 1; q <= 10; q++) {
           const a = b * q;
           if (a > R.aMax) continue;
-          if (ex && isMastered('div', a, b)) continue;
+          if (EXCLUDE && isMastered('div', a, b)) continue;
           pool.push({ op: 'div', a, b, w: weight('div', a, b) });
         }
       }
@@ -283,45 +291,65 @@
     return arr[arr.length - 1];
   }
   function pretty(op, a, b) {
-    if (op === 'mul') return `${a} × ${b}`;
-    if (op === 'add') return `${a} + ${b}`;
-    if (op === 'sub') return `${a} − ${b}`;
-    if (op === 'div') return `${a} ÷ ${b}`;
-    return `${a}?${b}`;
+    return op === 'mul'
+      ? `${a} × ${b}`
+      : op === 'add'
+      ? `${a} + ${b}`
+      : op === 'sub'
+      ? `${a} − ${b}`
+      : `${a} ÷ ${b}`;
   }
   function answerOf(op, a, b) {
-    if (op === 'mul') return a * b;
-    if (op === 'add') return a + b;
-    if (op === 'sub') return a - b;
-    if (op === 'div') return Math.floor(a / b);
-    return 0;
+    return op === 'mul' ? a * b : op === 'add' ? a + b : op === 'sub' ? a - b : Math.floor(a / b);
   }
 
-  /* Quiz */
+  /* ---------- Quiz (Pratique) ---------- */
   let quiz = null,
     timerInterval = null;
   const FULL = 113;
+
   function bindQuizUI() {
-    $('startQuiz').onclick = startQuiz;
-    $('submitAnswer').onclick = submit;
-    $('answer').addEventListener('keyup', (e) => {
+    $('startQuiz')?.addEventListener('click', startQuiz);
+    $('startQuiz2')?.addEventListener('click', startQuiz);
+    $('submitAnswer')?.addEventListener('click', submit);
+    $('answer')?.addEventListener('keyup', (e) => {
       if (e.key === 'Enter') submit();
     });
-    $('backToMenu').onclick = () => document.querySelector('[data-tab="dashboard"]').click();
-    $('retryErrors').onclick = retryErrors;
-    $('newSession').onclick = startQuiz; // ← relancer direct
+    $('backToMenu')?.addEventListener('click', () =>
+      document.querySelector('[data-tab="dashboard"]')?.click()
+    );
+    $('retryErrors')?.addEventListener('click', retryErrors);
+    $('newSession')?.addEventListener('click', startQuiz);
+    // op-switch (dashboard)
+    document.querySelectorAll('.opbtn').forEach((b) => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.opbtn').forEach((x) => x.classList.remove('active'));
+        b.classList.add('active');
+        renderStatsGrid(b.dataset.op);
+      });
+    });
   }
-  function startQuiz() {
-    staged.qCount = clampNum($('qCount').value, 5, 50);
-    staged.timerSec = clampNum($('timerSec').value, 0, 60);
 
+  function renderPracticeState() {
+    const startBox = $('startBox'),
+      quizBox = $('quizBox'),
+      resultBox = $('resultBox');
+    if (!startBox || !quizBox || !resultBox) return;
+    if (!quiz) {
+      startBox.classList.remove('hidden');
+      quizBox.classList.add('hidden');
+      resultBox.classList.add('hidden');
+    }
+  }
+
+  function startQuiz() {
     const pool = buildPool();
     if (pool.length === 0) {
-      alert('Aucun fait disponible (vérifie Réglages et l’opération globale).');
+      alert('Aucun fait disponible (réglages et/ou opération centrale).');
       return;
     }
 
-    const N = Math.min(staged.qCount, pool.length);
+    const N = Math.min(settings.qCount, pool.length);
     const bag = pool.slice(),
       items = [];
     while (items.length < N) {
@@ -329,13 +357,16 @@
       items.push({ op: it.op, a: it.a, b: it.b });
       bag.splice(bag.indexOf(it), 1);
     }
-    quiz = { items, idx: 0, score: 0, points: 0, timerSec: staged.timerSec };
-    $('resultBox').classList.add('hidden');
-    $('quizBox').classList.remove('hidden');
-    document.querySelector('[data-tab="pratique"]').click();
+
+    quiz = { items, idx: 0, score: 0, points: 0, timerSec: settings.timerSec };
+    $('startBox')?.classList.add('hidden');
+    $('resultBox')?.classList.add('hidden');
+    $('quizBox')?.classList.remove('hidden');
+    document.querySelector('[data-tab="pratique"]')?.click();
     updateProgressBar();
     renderQuestion();
   }
+
   function renderQuestion() {
     const it = quiz.items[quiz.idx];
     $('question').textContent = `${pretty(it.op, it.a, it.b)} = ?`;
@@ -346,31 +377,36 @@
     $('feedback').className = 'feedback hidden';
     resetTimer();
   }
+
   function resetTimer() {
     clearInterval(timerInterval);
     const sec = quiz.timerSec;
-    $('timeDisplay').textContent = sec;
     const circle = document.querySelector('.countdown circle');
-    circle.classList.remove('low-time');
-    circle.style.strokeDashoffset = 0;
+    if ($('timeDisplay')) $('timeDisplay').textContent = sec;
+    if (circle) {
+      circle.classList.remove('low-time');
+      circle.style.strokeDashoffset = 0;
+    }
     if (sec <= 0) return;
     let left = sec;
     timerInterval = setInterval(() => {
       left--;
-      $('timeDisplay').textContent = left;
-      const offset = (FULL / (sec - 1 || 1)) * (sec - left);
-      circle.style.strokeDashoffset = offset;
-      if (left <= 3) circle.classList.add('low-time');
+      if ($('timeDisplay')) $('timeDisplay').textContent = left;
+      if (circle) {
+        const offset = (FULL / (sec - 1 || 1)) * (sec - left);
+        circle.style.strokeDashoffset = offset;
+        if (left <= 3) circle.classList.add('low-time');
+      }
       if (left <= 0) {
         clearInterval(timerInterval);
         submit();
       }
     }, 1000);
   }
+
   function submit() {
     const it = quiz.items[quiz.idx];
-    const user = parseInt($('answer').value, 10);
-    const ok = user === answerOf(it.op, it.a, it.b);
+    const ok = parseInt($('answer').value, 10) === answerOf(it.op, it.a, it.b);
     clearInterval(timerInterval);
 
     if (ok) {
@@ -383,6 +419,7 @@
       $('feedback').className = 'feedback ko';
       $('feedback').textContent = `✘ Oups. Rép. attendue : ${answerOf(it.op, it.a, it.b)}`;
     }
+
     updateStat(it.op, it.a, it.b, ok);
 
     setTimeout(() => {
@@ -394,37 +431,46 @@
       }
     }, 500);
   }
-  function updateProgressBar() {
-    const r = quiz.idx / quiz.items.length;
-    $('progress-bar').style.width = `${Math.round(r * 100)}%`;
-  }
+
+  const updateProgressBar = () => {
+    if ($('progress-bar'))
+      $('progress-bar').style.width = `${Math.round((quiz.idx / quiz.items.length) * 100)}%`;
+  };
+
   function endQuiz() {
-    $('quizBox').classList.add('hidden');
-    $('resultBox').classList.remove('hidden');
-    $(
-      'resultTitle'
-    ).textContent = `Score : ${quiz.score}/${quiz.items.length} — Points : ${quiz.points}`;
+    $('quizBox')?.classList.add('hidden');
+    $('resultBox')?.classList.remove('hidden');
+    if ($('resultTitle'))
+      $(
+        'resultTitle'
+      ).textContent = `Score : ${quiz.score}/${quiz.items.length} — Points : ${quiz.points}`;
+
     const weakList = topWeak(currentOpForView(), 10);
-    $('missedQuestions').innerHTML = weakList
-      .map((w) => `<li>${pretty(w.op, w.a, w.b)} = ${answerOf(w.op, w.a, w.b)}</li>`)
-      .join('');
-    $('retryErrors').onclick = () => {
-      if (weakList.length === 0) {
-        alert('Aucune faiblesse détectée.');
-        return;
-      }
-      quiz = {
-        items: weakList.map((w) => ({ op: w.op, a: w.a, b: w.b })),
-        idx: 0,
-        score: 0,
-        points: 0,
-        timerSec: staged.timerSec,
+    if ($('missedQuestions'))
+      $('missedQuestions').innerHTML = weakList
+        .map((w) => `<li>${pretty(w.op, w.a, w.b)} = ${answerOf(w.op, w.a, w.b)}</li>`)
+        .join('');
+
+    const re = $('retryErrors');
+    if (re)
+      re.onclick = () => {
+        if (weakList.length === 0) {
+          alert('Aucune faiblesse détectée.');
+          return;
+        }
+        quiz = {
+          items: weakList.map((w) => ({ op: w.op, a: w.a, b: w.b })),
+          idx: 0,
+          score: 0,
+          points: 0,
+          timerSec: settings.timerSec,
+        };
+        $('resultBox')?.classList.add('hidden');
+        $('quizBox')?.classList.remove('hidden');
+        updateProgressBar();
+        renderQuestion();
       };
-      $('resultBox').classList.add('hidden');
-      $('quizBox').classList.remove('hidden');
-      updateProgressBar();
-      renderQuestion();
-    };
+
     results.push({
       date: fmtDate(new Date()),
       correct: quiz.score,
@@ -433,11 +479,11 @@
     });
     saveResults();
     renderDashboard();
+    quiz = null; // pour réafficher l'écran “Démarrer”
   }
 
-  /* Tableau de bord */
+  /* ---------- Dashboard & grille ---------- */
   function renderDashboard() {
-    // KPIs (filtrées par op globale si ≠ mix)
     let A = 0,
       S = 0,
       mastered = 0,
@@ -452,39 +498,37 @@
       if (st.consecutive >= 3) mastered++;
       if (st.errors > st.success) weak++;
     }
-    $('kpiRate').textContent = A ? `${Math.round((100 * S) / A)}%` : '—';
-    $('kpiAttempts').textContent = A ? `${A} essais` : '—';
-    $('kpiMastered').textContent = mastered;
-    $('kpiWeak').textContent = weak;
+    if ($('kpiRate')) $('kpiRate').textContent = A ? `${Math.round((100 * S) / A)}%` : '—';
+    if ($('kpiAttempts')) $('kpiAttempts').textContent = A ? `${A} essais` : '—';
+    if ($('kpiMastered')) $('kpiMastered').textContent = mastered;
+    if ($('kpiWeak')) $('kpiWeak').textContent = weak;
 
     const last = results[results.length - 1];
-    $('kpiLast').textContent = last ? `${last.correct}/${last.correct + last.missed}` : '—';
-    $('kpiLastWhen').textContent = last ? last.date : '—';
+    if ($('kpiLast'))
+      $('kpiLast').textContent = last ? `${last.correct}/${last.correct + last.missed}` : '—';
+    if ($('kpiLastWhen')) $('kpiLastWhen').textContent = last ? last.date : '—';
 
-    $('lastResults').innerHTML = results
-      .slice(-10)
-      .reverse()
-      .map(
-        (r) =>
-          `<li>${r.date} — <b>${r.correct}/${r.correct + r.missed}</b>, Points: ${r.points}</li>`
-      )
-      .join('');
+    if ($('lastResults'))
+      $('lastResults').innerHTML = results
+        .slice(-10)
+        .reverse()
+        .map(
+          (r) =>
+            `<li>${r.date} — <b>${r.correct}/${r.correct + r.missed}</b>, Points: ${r.points}</li>`
+        )
+        .join('');
 
     renderStatsGrid(currentOpForView());
   }
 
-  function currentOpForView() {
-    return settings.globalOp === 'mix' ? 'mul' : settings.globalOp;
-  }
+  const currentOpForView = () => (settings.globalOp === 'mix' ? 'mul' : settings.globalOp);
 
   function renderStatsGrid(op) {
-    // masquer les boutons locaux si op global ≠ mix
     const switcher = document.querySelector('.op-switch');
-    if (switcher) {
-      switcher.style.display = settings.globalOp === 'mix' ? 'flex' : 'none';
-    }
+    if (switcher) switcher.style.display = settings.globalOp === 'mix' ? 'flex' : 'none';
 
     const grid = $('statsGrid');
+    if (!grid) return;
     grid.innerHTML = '';
     const mkHead = (t) => {
       const d = document.createElement('div');
@@ -507,7 +551,6 @@
         if (op === 'div' && (j === 0 || i % j !== 0)) {
           const d = document.createElement('div');
           d.className = 'cell neutral-bg';
-          d.textContent = '';
           grid.appendChild(d);
           continue;
         }
@@ -534,16 +577,15 @@
     }
   }
 
-  /* Réglages */
+  /* ---------- Réglages ---------- */
   function bindSettingsUI() {
-    $('presetSelect').onchange = () => {
+    $('presetSelect')?.addEventListener('change', () => {
       const id = $('presetSelect').value;
       if (!id) return;
-      applyPresetToStaged(id);
-      renderSettings();
-    };
-    $('saveSettings').onclick = saveSettingsCommit;
-    $('resetProgress').onclick = () => {
+      applyPreset(id);
+    });
+    $('saveSettings')?.addEventListener('click', saveSettingsCommit);
+    $('resetProgress')?.addEventListener('click', () => {
       if (confirm('Effacer la progression de ce profil ?')) {
         stats = {};
         results = [];
@@ -551,53 +593,74 @@
         saveResults();
         renderAll();
       }
-    };
+    });
   }
+
   function renderSettings() {
-    $('op_mul').checked = staged.ops.mul;
-    $('op_add').checked = staged.ops.add;
-    $('op_sub').checked = staged.ops.sub;
-    $('op_div').checked = staged.ops.div;
-    $('op_mul').onchange = (e) => (staged.ops.mul = e.target.checked);
-    $('op_add').onchange = (e) => (staged.ops.add = e.target.checked);
-    $('op_sub').onchange = (e) => (staged.ops.sub = e.target.checked);
-    $('op_div').onchange = (e) => (staged.ops.div = e.target.checked);
+    const isMix = settings.globalOp === 'mix';
+    if ($('opsLockHint'))
+      $('opsLockHint').textContent = isMix
+        ? 'En mode Mix, tu peux choisir quelles opérations faire apparaître.'
+        : 'Les opérations sont verrouillées par l’opération centrale.';
+
+    ['mul', 'add', 'sub', 'div'].forEach((op) => {
+      const cb = $(`op_${op}`);
+      if (!cb) return;
+      cb.checked = staged.ops[op];
+      cb.disabled = !isMix;
+      cb.onchange = (e) => {
+        if (isMix) {
+          staged.ops[op] = e.target.checked;
+        }
+      };
+    });
 
     const R = staged.ranges;
-    $('mul_a_min').value = R.mul.aMin;
-    $('mul_a_max').value = R.mul.aMax;
-    $('mul_b_max').value = R.mul.bMax;
-    $('add_a_min').value = R.add.aMin;
-    $('add_a_max').value = R.add.aMax;
-    $('add_b_max').value = R.add.bMax;
-    $('sub_a_min').value = R.sub.aMin;
-    $('sub_a_max').value = R.sub.aMax;
-    $('sub_b_max').value = R.sub.bMax;
-    $('sub_nonneg').checked = R.sub.nonneg;
-    $('div_a_max').value = R.div.aMax;
-    $('div_b_max').value = R.div.bMax;
+    // assigner & binder (avec sécurités)
+    const bindNum = (id, getter) => {
+      const el = $(id);
+      if (!el) return;
+      el.value = getter();
+      el.oninput = (e) => {
+        const v = +e.target.value;
+        getter(v);
+      };
+    };
 
-    $('mul_a_min').oninput = (e) => (R.mul.aMin = +e.target.value);
-    $('mul_a_max').oninput = (e) => (R.mul.aMax = +e.target.value);
-    $('mul_b_max').oninput = (e) => (R.mul.bMax = +e.target.value);
-    $('add_a_min').oninput = (e) => (R.add.aMin = +e.target.value);
-    $('add_a_max').oninput = (e) => (R.add.aMax = +e.target.value);
-    $('add_b_max').oninput = (e) => (R.add.bMax = +e.target.value);
-    $('sub_a_min').oninput = (e) => (R.sub.aMin = +e.target.value);
-    $('sub_a_max').oninput = (e) => (R.sub.aMax = +e.target.value);
-    $('sub_b_max').oninput = (e) => (R.sub.bMax = +e.target.value);
-    $('sub_nonneg').onchange = (e) => (R.sub.nonneg = !!e.target.checked);
-    $('div_a_max').oninput = (e) => (R.div.aMax = +e.target.value);
-    $('div_b_max').oninput = (e) => (R.div.bMax = +e.target.value);
+    bindNum('mul_a_min', (v) => (v !== undefined ? (R.mul.aMin = v) : R.mul.aMin));
+    bindNum('mul_a_max', (v) => (v !== undefined ? (R.mul.aMax = v) : R.mul.aMax));
+    bindNum('mul_b_max', (v) => (v !== undefined ? (R.mul.bMax = v) : R.mul.bMax));
 
-    $('qCount').value = staged.qCount;
-    $('timerSec').value = staged.timerSec;
-    $('excludeMastered').checked = staged.excludeMastered;
-    $('qCount').oninput = (e) => (staged.qCount = clampNum(e.target.value, 5, 50));
-    $('timerSec').oninput = (e) => (staged.timerSec = clampNum(e.target.value, 0, 60));
-    $('excludeMastered').onchange = (e) => (staged.excludeMastered = !!e.target.checked);
+    bindNum('add_a_min', (v) => (v !== undefined ? (R.add.aMin = v) : R.add.aMin));
+    bindNum('add_a_max', (v) => (v !== undefined ? (R.add.aMax = v) : R.add.aMax));
+    bindNum('add_b_max', (v) => (v !== undefined ? (R.add.bMax = v) : R.add.bMax));
+
+    bindNum('sub_a_min', (v) => (v !== undefined ? (R.sub.aMin = v) : R.sub.aMin));
+    bindNum('sub_a_max', (v) => (v !== undefined ? (R.sub.aMax = v) : R.sub.aMax));
+    bindNum('sub_b_max', (v) => (v !== undefined ? (R.sub.bMax = v) : R.sub.bMax));
+    if ($('sub_nonneg')) {
+      $('sub_nonneg').checked = R.sub.nonneg;
+      $('sub_nonneg').onchange = (e) => (R.sub.nonneg = !!e.target.checked);
+    }
+
+    bindNum('div_a_max', (v) => (v !== undefined ? (R.div.aMax = v) : R.div.aMax));
+    bindNum('div_b_max', (v) => (v !== undefined ? (R.div.bMax = v) : R.div.bMax));
+
+    if ($('qCount')) {
+      $('qCount').value = settings.qCount;
+      $('qCount').oninput = (e) => (staged.qCount = clamp(e.target.value, 5, 50));
+    }
+    if ($('timerSec')) {
+      $('timerSec').value = settings.timerSec;
+      $('timerSec').oninput = (e) => (staged.timerSec = clamp(e.target.value, 0, 60));
+    }
+    if ($('excludeMastered')) {
+      $('excludeMastered').checked = settings.excludeMastered;
+      $('excludeMastered').onchange = (e) => (staged.excludeMastered = !!e.target.checked);
+    }
   }
-  function applyPresetToStaged(id) {
+
+  function applyPreset(id) {
     if (id === 'g3_mul_0_12') {
       staged.globalOp = 'mul';
       staged.ops = { mul: true, add: false, sub: false, div: false };
@@ -605,8 +668,7 @@
       staged.qCount = 20;
       staged.timerSec = 10;
       staged.excludeMastered = true;
-      //   $('globalOpSel').value = 'mul';
-      setGlobalOp('mul'); // ou 'mix' / 'add' / 'sub' / 'div' selon le preset
+      setGlobalOp('mul');
     } else if (id === 'g3_add_sub_0_20') {
       staged.globalOp = 'mix';
       staged.ops = { mul: false, add: true, sub: true, div: false };
@@ -614,10 +676,8 @@
       staged.ranges.sub = { aMin: 0, aMax: 20, bMax: 20, nonneg: true };
       staged.qCount = 20;
       staged.timerSec = 10;
-      libSheet;
       staged.excludeMastered = true;
-      //   $('globalOpSel').value = 'mix';
-      setGlobalOp('mul'); // ou 'mix' / 'add' / 'sub' / 'div' selon le preset
+      setGlobalOp('mix');
     } else if (id === 'mix_all') {
       staged.globalOp = 'mix';
       staged.ops = { mul: true, add: true, sub: true, div: true };
@@ -628,74 +688,63 @@
       staged.qCount = 20;
       staged.timerSec = 10;
       staged.excludeMastered = true;
-      //   $('globalOpSel').value = 'mix';
-      setGlobalOp('mul'); // ou 'mix' / 'add' / 'sub' / 'div' selon le preset
+      setGlobalOp('mix');
     }
+    renderSettings();
   }
 
-  /* Mode libre */
+  /* ---------- Mode libre ---------- */
   function bindLibreUI() {
-    $('libGen').onclick = genLibre;
-    $('libCheck').onclick = checkLibre;
-    $('libOp').onchange = buildLibreFamilies;
+    $('libGen')?.addEventListener('click', genLibre);
+    $('libCheck')?.addEventListener('click', checkLibre);
+    $('libOp')?.addEventListener('change', buildLibreFamilies);
   }
   function buildLibreFamilies() {
-    const global = settings.globalOp || 'mix';
     const opSel = $('libOp');
-    // par défaut, on colle à l’opération globale (si ≠ mix)
-    if (global !== 'mix') opSel.value = global;
+    const famSel = $('libFam');
+    if (!opSel || !famSel) return;
+    if (settings.globalOp !== 'mix') opSel.value = settings.globalOp;
     const op = opSel.value;
-
-    const famSel = $('libFam'),
-      opts = [];
-    if (op === 'mul') {
-      for (let k = 1; k <= 10; k++) opts.push({ v: `b:${k}`, label: `× ${k}` });
-    }
-    if (op === 'add') {
-      for (let k = 1; k <= 10; k++) opts.push({ v: `b:${k}`, label: `+ ${k}` });
-    }
-    if (op === 'sub') {
-      for (let k = 1; k <= 10; k++) opts.push({ v: `b:${k}`, label: `− ${k}` });
+    const options = [];
+    if (op === 'mul' || op === 'add' || op === 'sub') {
+      for (let k = 1; k <= 10; k++) options.push({ v: `b:${k}`, label: `${OP_LABEL[op]} ${k}` });
     }
     if (op === 'div') {
-      for (let k = 1; k <= 10; k++) opts.push({ v: `b:${k}`, label: `÷ par ${k}` });
+      for (let k = 1; k <= 10; k++) options.push({ v: `b:${k}`, label: `÷ par ${k}` });
     }
-    famSel.innerHTML = opts.map((o) => `<option value="${o.v}">${o.label}</option>`).join('');
+    famSel.innerHTML = options.map((o) => `<option value="${o.v}">${o.label}</option>`).join('');
+    if (!famSel.value && options.length) famSel.value = options[0].v;
   }
   function genLibre() {
-    const op = $('libOp').value;
-    const b = +$('libFam').value.split(':')[1];
+    const opSel = $('libOp'),
+      famSel = $('libFam');
+    if (!opSel || !famSel) return;
+    const op = opSel.value;
+    const b = Number((famSel.value || 'b:1').split(':')[1] || 1);
     const items = [];
     for (let k = 1; k <= 10; k++) {
-      if (op === 'mul') {
-        items.push({ op, a: k, b });
-      } else if (op === 'add') {
-        items.push({ op, a: k, b });
-      } else if (op === 'sub') {
-        // garantir résultat ≥0 : (b+k) − b
-        items.push({ op, a: b + k, b });
-      } else if (op === 'div') {
-        items.push({ op, a: b * k, b });
-      }
+      if (op === 'mul' || op === 'add') items.push({ op, a: k, b });
+      else if (op === 'sub') items.push({ op, a: b + k, b });
+      else if (op === 'div') items.push({ op, a: b * k, b });
     }
     shuffle(items);
     const sheet = $('libSheet');
+    if (!sheet) return;
     sheet.classList.remove('hidden');
-    sheet.innerHTML = '';
     sheet.innerHTML = items
       .map(
         (it, idx) => `
       <div class="cell">
-        <div style="margin-bottom:6px">${pretty(it.op, it.a, it.b)} = </div>
+        <div style="margin-right:10px">${pretty(it.op, it.a, it.b)} =</div>
         <input type="number" id="lib_${idx}" data-op="${it.op}" data-a="${it.a}" data-b="${it.b}">
       </div>`
       )
       .join('');
-    $('libFeedback').textContent = '';
+    if ($('libFeedback')) $('libFeedback').textContent = '';
   }
   function checkLibre() {
     const inputs = Array.from(document.querySelectorAll('#libSheet input'));
-    if (inputs.length === 0) {
+    if (!inputs.length) {
       alert('Génère une feuille d’abord.');
       return;
     }
@@ -704,19 +753,19 @@
       const op = inp.dataset.op,
         a = +inp.dataset.a,
         b = +inp.dataset.b;
-      const want = answerOf(op, a, b),
-        got = parseInt(inp.value, 10);
-      const good = got === want;
+      const good = parseInt(inp.value, 10) === answerOf(op, a, b);
       updateStat(op, a, b, good);
       if (good) ok++;
       inp.style.borderColor = good ? '#22c55e' : '#f87171';
     }
-    $('libFeedback').className = 'feedback ' + (ok === inputs.length ? 'ok' : 'ko');
-    $('libFeedback').textContent = `${ok}/${inputs.length} correct(s)`;
+    if ($('libFeedback')) {
+      $('libFeedback').className = 'feedback ' + (ok === inputs.length ? 'ok' : 'ko');
+      $('libFeedback').textContent = `${ok}/${inputs.length} correct(s)`;
+    }
     renderDashboard();
   }
 
-  /* Rapport */
+  /* ---------- Rapport ---------- */
   function renderReport() {
     let A = 0,
       S = 0,
@@ -732,54 +781,50 @@
       if (st.consecutive >= 3) mastered++;
       if (st.errors > st.success) weak++;
     }
-    $('rGlobalRate').textContent = A ? `${Math.round((100 * S) / A)}%` : '—';
-    $('rGlobalAttempts').textContent = A ? `${A} essais` : '—';
-    $('rMasteredCount').textContent = mastered;
-    $('rWeakCount').textContent = weak;
+    if ($('rGlobalRate')) $('rGlobalRate').textContent = A ? `${Math.round((100 * S) / A)}%` : '—';
+    if ($('rGlobalAttempts')) $('rGlobalAttempts').textContent = A ? `${A} essais` : '—';
+    if ($('rMasteredCount')) $('rMasteredCount').textContent = mastered;
+    if ($('rWeakCount')) $('rWeakCount').textContent = weak;
 
     const last = results[results.length - 1];
-    $('rLastPoints').textContent = last ? last.points : '—';
-    $('rLastWhen').textContent = last ? last.date : '—';
+    if ($('rLastPoints')) $('rLastPoints').textContent = last ? last.points : '—';
+    if ($('rLastWhen')) $('rLastWhen').textContent = last ? last.date : '—';
 
     const w = topWeak(currentOpForView(), 10),
       m = topMastered(currentOpForView(), 10);
-    $('rWeak').innerHTML = w.length
-      ? w
-          .map((x) =>
-            rowHTML(`${pretty(x.op, x.a, x.b)}`, rate(x.op, x.a, x.b), getAttempts(x.op, x.a, x.b))
-          )
-          .join('')
-      : `<div class="row-line"><div>Aucune faiblesse détectée 🎉</div></div>`;
-    $('rMastered').innerHTML = m.length
-      ? m
-          .map((x) =>
-            rowHTML(`${pretty(x.op, x.a, x.b)}`, rate(x.op, x.a, x.b), getAttempts(x.op, x.a, x.b))
-          )
-          .join('')
-      : `<div class="row-line"><div>Pas encore de faits “maîtrisés”.</div></div>`;
-
-    if (!$('rDetailsAll')._bound) {
-      $('rDetailsAll').addEventListener('change', (e) => renderDetails(!!e.target.checked));
-      $('rDetailsAll')._bound = true;
+    if ($('rWeak'))
+      $('rWeak').innerHTML = w.length
+        ? w
+            .map((x) =>
+              rowHTML(`${pretty(x.op, x.a, x.b)}`, rate(x.op, x.a, x.b), attempts(x.op, x.a, x.b))
+            )
+            .join('')
+        : `<div class="row-line"><div>Aucune faiblesse détectée 🎉</div></div>`;
+    if ($('rMastered'))
+      $('rMastered').innerHTML = m.length
+        ? m
+            .map((x) =>
+              rowHTML(`${pretty(x.op, x.a, x.b)}`, rate(x.op, x.a, x.b), attempts(x.op, x.a, x.b))
+            )
+            .join('')
+        : `<div class="row-line"><div>Pas encore de faits “maîtrisés”.</div></div>`;
+    const allChk = $('rDetailsAll');
+    if (allChk && !allChk._bound) {
+      allChk.addEventListener('change', (e) => renderDetails(!!e.target.checked));
+      allChk._bound = true;
     }
   }
-  function rowHTML(label, r, attempts) {
-    const w = r == null ? 0 : Math.round(r * 100),
-      color = rateColor(r);
-    return `<div class="row-line"><div><span class="tag">${label}</span></div><div>${
-      r == null ? '—' : w + '%'
-    }</div><div class="meter"><span style="width:${w}%;background:${color}"></span></div><div>${attempts} ess.</div></div>`;
-  }
-  function rateColor(r) {
-    if (r === null) return '#334155';
-    if (r < 0.5) return '#f87171';
-    if (r < 0.75) return '#fbbf24';
-    return '#22c55e';
-  }
-  function getAttempts(op, a, b) {
+  const attempts = (op, a, b) => {
     const s = getStat(op, a, b);
     return s.success + s.errors;
-  }
+  };
+  const rowHTML = (label, r, att) => {
+    const w = r == null ? 0 : Math.round(r * 100),
+      color = r == null ? '#334155' : r < 0.5 ? '#f87171' : r < 0.75 ? '#fbbf24' : '#22c55e';
+    return `<div class="row-line"><div><span class="tag">${label}</span></div><div>${
+      r == null ? '—' : w + '%'
+    }</div><div class="meter"><span style="width:${w}%;background:${color}"></span></div><div>${att} ess.</div></div>`;
+  };
 
   function renderDetails(includeZeros) {
     const rows = [],
@@ -788,7 +833,7 @@
     const loopOps = settings.globalOp === 'mix' ? ['mul', 'add', 'sub', 'div'] : [opView];
     for (const op of loopOps) {
       for (let i = 0; i <= span[op]; i++) {
-        const maxB = op === 'div' ? span[op] : span[op];
+        const maxB = span[op];
         for (let j = op === 'div' ? 1 : 0; j <= maxB; j++) {
           if (op === 'div' && i % j !== 0) continue;
           let a = i,
@@ -805,30 +850,39 @@
         }
       }
     }
-    rows.sort((x, y) => {
-      const dx = y.err - y.succ - (x.err - x.succ);
-      if (dx) return dx;
-      if (y.attempts !== x.attempts) return y.attempts - x.attempts;
-      return x.op.localeCompare(y.op) || x.a - x.b;
-    });
-    $('rDetails').innerHTML = rows.length
-      ? rows
-          .slice(0, 800)
-          .map((r) => {
-            const w = r.rate == null ? 0 : Math.round(r.rate * 100),
-              color = rateColor(r.rate);
-            return `<div class="row-detail"><div><span class="tag">${pretty(
-              r.op,
-              r.a,
-              r.b
-            )}</span></div><div>${r.succ}</div><div>${r.err}</div><div>${
-              r.attempts
-            }</div><div class="meter"><span style="width:${w}%;background:${color}"></span></div><div>${
-              r.rate == null ? '—' : w + '%'
-            }</div></div>`;
-          })
-          .join('')
-      : `<div class="row-detail"><div>Aucune donnée.</div></div>`;
+    rows.sort(
+      (x, y) =>
+        y.err - y.succ - (x.err - x.succ) ||
+        y.attempts - x.attempts ||
+        x.op.localeCompare(y.op) ||
+        x.a - x.b
+    );
+    if ($('rDetails'))
+      $('rDetails').innerHTML = rows.length
+        ? rows
+            .slice(0, 800)
+            .map((r) => {
+              const w = r.rate == null ? 0 : Math.round(r.rate * 100),
+                color =
+                  r.rate == null
+                    ? '#334155'
+                    : r.rate < 0.5
+                    ? '#f87171'
+                    : r.rate < 0.75
+                    ? '#fbbf24'
+                    : '#22c55e';
+              return `<div class="row-detail"><div><span class="tag">${pretty(
+                r.op,
+                r.a,
+                r.b
+              )}</span></div><div>${r.succ}</div><div>${r.err}</div><div>${
+                r.attempts
+              }</div><div class="meter"><span style="width:${w}%;background:${color}"></span></div><div>${
+                r.rate == null ? '—' : w + '%'
+              }</div></div>`;
+            })
+            .join('')
+        : `<div class="row-detail"><div>Aucune donnée.</div></div>`;
   }
 
   function topWeak(opFilter, n = 10) {
@@ -858,19 +912,5 @@
     }
     out.sort((x, y) => y.streak - x.streak || y.rate - x.rate || y.attempts - x.attempts);
     return out.slice(0, n);
-  }
-
-  /* Utils */
-  function clampNum(v, min, max) {
-    v = parseInt(v, 10);
-    if (isNaN(v)) v = min;
-    return Math.max(min, Math.min(max, v));
-  }
-  function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
   }
 })();

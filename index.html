@@ -15,7 +15,7 @@
     <header class="topbar">
       <div class="brand">🧮 Maths Pratique</div>
 
-      <!-- NOUVEAU : sélecteur d’opération centrale, centré -->
+      <!-- Sélecteur d’opération centrale -->
       <div class="focus-op" role="group" aria-label="Opération centrale">
         <div class="focus-title">
           Opération centrale : <b id="focusOpLabel">Mix (4 opérations)</b>
@@ -112,7 +112,14 @@
     <!-- ===== Pratique (Quiz) ===== -->
     <section id="pratique" class="tab-panel">
       <div class="panel">
-        <div id="quizBox" class="card">
+        <!-- écran Démarrer quand aucun quiz en cours -->
+        <div id="startBox" class="card">
+          <h3>Pratique</h3>
+          <p class="hint">Clique <b>Démarrer</b> pour un quiz selon l’opération centrale.</p>
+          <button id="startQuiz2" class="btn lg">Démarrer le quiz</button>
+        </div>
+
+        <div id="quizBox" class="card hidden">
           <div id="progress-container"><div id="progress-bar"></div></div>
           <div class="row between">
             <div id="progressTracker" class="muted">Question 0/0</div>
@@ -189,6 +196,7 @@
             <label><input type="checkbox" id="op_sub" /> −</label>
             <label><input type="checkbox" id="op_div" /> ÷</label>
           </div>
+          <div id="opsLockHint" class="hint" style="margin-top: 6px"></div>
 
           <div class="groups">
             <div class="group">
@@ -254,56 +262,51 @@
         </div>
       </div>
     </section>
-
     <!-- ===== Rapport ===== -->
     <section id="rapport" class="tab-panel">
       <div class="panel">
         <div class="cards kpi-cards">
           <div class="card kpi">
-            <div class="kpi-label">Taux global</div>
+            <div class="kpi-label">Taux de réussite</div>
             <div class="kpi-value" id="rGlobalRate">—</div>
             <div class="kpi-sub" id="rGlobalAttempts">—</div>
           </div>
           <div class="card kpi">
-            <div class="kpi-label">Maîtrisés</div>
+            <div class="kpi-label">Faits maîtrisés</div>
             <div class="kpi-value ok" id="rMasteredCount">—</div>
-            <div class="kpi-sub">3 succès consécutifs</div>
+            <div class="kpi-sub">3 réussites consécutives</div>
           </div>
           <div class="card kpi">
-            <div class="kpi-label">Faiblesses</div>
+            <div class="kpi-label">Faits faibles</div>
             <div class="kpi-value warn" id="rWeakCount">—</div>
-            <div class="kpi-sub">succès &lt; erreurs</div>
+            <div class="kpi-sub">plus d’erreurs que de succès</div>
           </div>
           <div class="card kpi">
-            <div class="kpi-label">Points (dernière)</div>
+            <div class="kpi-label">Dernière session</div>
             <div class="kpi-value" id="rLastPoints">—</div>
             <div class="kpi-sub" id="rLastWhen">—</div>
           </div>
         </div>
 
-        <div class="row wrap gap">
+        <div class="row gap top">
           <div class="card flex1">
-            <h3>Faiblesses (Top 10)</h3>
+            <h3>Top faiblesses</h3>
             <div id="rWeak" class="list-rows"></div>
           </div>
+
           <div class="card flex1">
-            <h3>Maîtrisés (Top 10)</h3>
+            <h3>Top maîtrisés</h3>
             <div id="rMastered" class="list-rows"></div>
           </div>
         </div>
 
         <div class="card">
-          <h3>Détail par fait</h3>
-          <label class="row gap" style="font-size: 12px; color: var(--muted)">
-            <input type="checkbox" id="rDetailsAll" /> Afficher aussi les faits jamais tentés
-          </label>
-          <div class="row-detail header">
-            <div>Fait</div>
-            <div>Succès</div>
-            <div>Erreurs</div>
-            <div>Total</div>
-            <div>Progression</div>
-            <div>Taux</div>
+          <div class="row between">
+            <h3>Détails par fait</h3>
+            <label class="row gap">
+              <input type="checkbox" id="rDetailsAll" />
+              Inclure les faits jamais tentés
+            </label>
           </div>
           <div id="rDetails" class="list-rows"></div>
         </div>
@@ -327,7 +330,7 @@
           <summary>✍️ Mode libre</summary>
           <ul>
             <li>Choisis opération + <b>famille</b> (ex. “×7”, “+9”, “÷ par 8”).</li>
-            <li>Génère une feuille de 10, corrige avec feedback et enregistre la progression.</li>
+            <li>Génère 10 faits (1→10), ordre aléatoire, sans doublon; corrige et enregistre.</li>
           </ul>
         </details>
         <details>
