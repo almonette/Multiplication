@@ -54,6 +54,7 @@
         .slice(0, 32) || 'default';
     saveLS('math_profile_id_v1', PROFILE_ID);
     loadState();
+    updateGlobalOpUI(settings.globalOp);
     renderAll();
   }
 
@@ -76,9 +77,11 @@
   let staged = null;
   let results = [];
   let stats = {}; // k => {success, errors, consecutive, last, errRun}
+  let lastWeakList = [];
 
   function loadState() {
     settings = loadLS(keyP(LS_KEYS.settings), DEFAULT_SETTINGS);
+    normalizeSettings(settings);
     if (!settings.globalOp) settings.globalOp = 'mix';
     if (!settings.ops) settings.ops = { mul: true, add: true, sub: true, div: true };
     results = loadLS(keyP(LS_KEYS.results), []);
@@ -87,11 +90,38 @@
   }
   function saveSettingsCommit() {
     settings = JSON.parse(JSON.stringify(staged));
+    normalizeSettings(settings);
     saveLS(keyP(LS_KEYS.settings), settings);
     renderAll();
   }
   const saveResults = () => saveLS(keyP(LS_KEYS.results), results);
   const saveStats = () => saveLS(keyP(LS_KEYS.stats), stats);
+
+  function normalizeSettings(s) {
+    if (!s || !s.ranges) return;
+    const int = (v, d) => {
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : d;
+    };
+    const fixMinMax = (obj, minKey, maxKey, floor) => {
+      obj[minKey] = int(obj[minKey], floor);
+      obj[maxKey] = int(obj[maxKey], obj[minKey]);
+      if (obj[minKey] > obj[maxKey]) [obj[minKey], obj[maxKey]] = [obj[maxKey], obj[minKey]];
+      if (obj[minKey] < floor) obj[minKey] = floor;
+      if (obj[maxKey] < floor) obj[maxKey] = floor;
+    };
+    fixMinMax(s.ranges.mul, 'aMin', 'aMax', 0);
+    s.ranges.mul.bMax = Math.max(0, int(s.ranges.mul.bMax, 12));
+
+    fixMinMax(s.ranges.add, 'aMin', 'aMax', 0);
+    s.ranges.add.bMax = Math.max(0, int(s.ranges.add.bMax, 20));
+
+    fixMinMax(s.ranges.sub, 'aMin', 'aMax', 0);
+    s.ranges.sub.bMax = Math.max(0, int(s.ranges.sub.bMax, 20));
+
+    s.ranges.div.aMax = Math.max(1, int(s.ranges.div.aMax, 144));
+    s.ranges.div.bMax = Math.max(1, int(s.ranges.div.bMax, 12));
+  }
 
   /* ---------- Bootstrap ---------- */
   document.addEventListener('DOMContentLoaded', bootstrap);
@@ -123,6 +153,7 @@
     bindSettingsUI();
     bindQuizUI();
     bindLibreUI();
+    bindPrintUI();
 
     // État initial
     loadState();
@@ -193,6 +224,12 @@
           : '÷ Division';
   }
   const OP_LABEL = { mul: '×', add: '+', sub: '−', div: '÷' };
+  const OP_NAME = {
+    mul: 'Multiplication',
+    add: 'Addition',
+    sub: 'Soustraction',
+    div: 'Division',
+  };
 
   /* ---------- Stats & faits ---------- */
   function keyOf(op, a, b) {
@@ -236,7 +273,7 @@
   /* ---------- Génération quiz ---------- */
   function buildPool() {
     const pool = [];
-    const EXCLUDE = true;
+    const EXCLUDE = !!settings.excludeMastered;
     if (opAllowed('mul')) {
       const R = settings.ranges.mul;
       for (let a = R.aMin; a <= R.aMax; a++) {
@@ -446,6 +483,7 @@
       ).textContent = `Score : ${quiz.score}/${quiz.items.length} — Points : ${quiz.points}`;
 
     const weakList = topWeak(currentOpForView(), 10);
+    lastWeakList = weakList;
     if ($('missedQuestions'))
       $('missedQuestions').innerHTML = weakList
         .map((w) => `<li>${pretty(w.op, w.a, w.b)} = ${answerOf(w.op, w.a, w.b)}</li>`)
@@ -458,17 +496,7 @@
           alert('Aucune faiblesse détectée.');
           return;
         }
-        quiz = {
-          items: weakList.map((w) => ({ op: w.op, a: w.a, b: w.b })),
-          idx: 0,
-          score: 0,
-          points: 0,
-          timerSec: settings.timerSec,
-        };
-        $('resultBox')?.classList.add('hidden');
-        $('quizBox')?.classList.remove('hidden');
-        updateProgressBar();
-        renderQuestion();
+        startRetry(weakList);
       };
 
     results.push({
@@ -480,6 +508,28 @@
     saveResults();
     renderDashboard();
     quiz = null; // pour réafficher l'écran “Démarrer”
+  }
+
+  function retryErrors() {
+    if (!lastWeakList.length) {
+      alert('Aucune faiblesse détectée.');
+      return;
+    }
+    startRetry(lastWeakList);
+  }
+
+  function startRetry(list) {
+    quiz = {
+      items: list.map((w) => ({ op: w.op, a: w.a, b: w.b })),
+      idx: 0,
+      score: 0,
+      points: 0,
+      timerSec: settings.timerSec,
+    };
+    $('resultBox')?.classList.add('hidden');
+    $('quizBox')?.classList.remove('hidden');
+    updateProgressBar();
+    renderQuestion();
   }
 
   /* ---------- Dashboard & grille ---------- */
@@ -647,29 +697,30 @@
     bindNum('div_b_max', (v) => (v !== undefined ? (R.div.bMax = v) : R.div.bMax));
 
     if ($('qCount')) {
-      $('qCount').value = settings.qCount;
+      $('qCount').value = staged.qCount;
       $('qCount').oninput = (e) => (staged.qCount = clamp(e.target.value, 5, 50));
     }
     if ($('timerSec')) {
-      $('timerSec').value = settings.timerSec;
+      $('timerSec').value = staged.timerSec;
       $('timerSec').oninput = (e) => (staged.timerSec = clamp(e.target.value, 0, 60));
     }
     if ($('excludeMastered')) {
-      $('excludeMastered').checked = settings.excludeMastered;
+      $('excludeMastered').checked = staged.excludeMastered;
       $('excludeMastered').onchange = (e) => (staged.excludeMastered = !!e.target.checked);
     }
   }
 
   function applyPreset(id) {
     if (id === 'g3_mul_0_12') {
+      setGlobalOp('mul');
       staged.globalOp = 'mul';
       staged.ops = { mul: true, add: false, sub: false, div: false };
       staged.ranges.mul = { aMin: 0, aMax: 12, bMax: 12 };
       staged.qCount = 20;
       staged.timerSec = 10;
       staged.excludeMastered = true;
-      setGlobalOp('mul');
     } else if (id === 'g3_add_sub_0_20') {
+      setGlobalOp('mix');
       staged.globalOp = 'mix';
       staged.ops = { mul: false, add: true, sub: true, div: false };
       staged.ranges.add = { aMin: 0, aMax: 20, bMax: 20 };
@@ -677,8 +728,8 @@
       staged.qCount = 20;
       staged.timerSec = 10;
       staged.excludeMastered = true;
-      setGlobalOp('mix');
     } else if (id === 'mix_all') {
+      setGlobalOp('mix');
       staged.globalOp = 'mix';
       staged.ops = { mul: true, add: true, sub: true, div: true };
       staged.ranges.mul = { aMin: 0, aMax: 12, bMax: 12 };
@@ -688,7 +739,6 @@
       staged.qCount = 20;
       staged.timerSec = 10;
       staged.excludeMastered = true;
-      setGlobalOp('mix');
     }
     renderSettings();
   }
@@ -698,6 +748,69 @@
     $('libGen')?.addEventListener('click', genLibre);
     $('libCheck')?.addEventListener('click', checkLibre);
     $('libOp')?.addEventListener('change', buildLibreFamilies);
+  }
+
+  /* ---------- Imprimer ---------- */
+  function bindPrintUI() {
+    $('printGen')?.addEventListener('click', genPrint);
+    $('printBtn')?.addEventListener('click', () => window.print());
+  }
+
+  function genPrint() {
+    const items = buildPrintItems();
+    if (!items) return;
+    renderPrint(items);
+  }
+
+  function buildPrintItems() {
+    const pool = buildPool();
+    if (pool.length === 0) {
+      alert('Aucun fait disponible (réglages et/ou opération centrale).');
+      return null;
+    }
+    const N = Math.min(settings.qCount, pool.length);
+    const bag = pool.slice();
+    const items = [];
+    while (items.length < N) {
+      const it = pickWeighted(bag);
+      items.push({ op: it.op, a: it.a, b: it.b });
+      bag.splice(bag.indexOf(it), 1);
+    }
+    return items;
+  }
+
+  function renderPrint(items) {
+    const meta = buildPrintMeta(items.length);
+    if ($('printMeta')) $('printMeta').textContent = meta;
+    if ($('printMetaAnswers')) $('printMetaAnswers').textContent = meta;
+
+    const list = items
+      .map(
+        (it) =>
+          `<div class="print-row"><div class="print-q">${pretty(it.op, it.a, it.b)} =</div><div class="print-line"></div></div>`
+      )
+      .join('');
+    const answers = items
+      .map(
+        (it) =>
+          `<div class="print-row"><div class="print-q">${pretty(
+            it.op,
+            it.a,
+            it.b
+          )} =</div><div class="print-answer">${answerOf(it.op, it.a, it.b)}</div></div>`
+      )
+      .join('');
+
+    if ($('printList')) $('printList').innerHTML = list;
+    if ($('printAnswersList')) $('printAnswersList').innerHTML = answers;
+  }
+
+  function buildPrintMeta(count) {
+    const op =
+      settings.globalOp === 'mix'
+        ? 'Mix'
+        : `${OP_LABEL[settings.globalOp]} ${OP_NAME[settings.globalOp]}`;
+    return `${op} • ${count} questions • ${fmtDate(new Date())}`;
   }
   function buildLibreFamilies() {
     const opSel = $('libOp');
@@ -855,7 +968,8 @@
         y.err - y.succ - (x.err - x.succ) ||
         y.attempts - x.attempts ||
         x.op.localeCompare(y.op) ||
-        x.a - x.b
+        x.a - y.a ||
+        x.b - y.b
     );
     if ($('rDetails'))
       $('rDetails').innerHTML = rows.length

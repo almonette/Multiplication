@@ -45,6 +45,7 @@
       <button class="tab" data-tab="libre">Mode libre</button>
       <button class="tab" data-tab="reglages">Réglages</button>
       <button class="tab" data-tab="rapport">Rapport</button>
+      <button class="tab" data-tab="imprimer">Imprimer</button>
       <button class="tab" data-tab="aide">Aide</button>
     </nav>
 
@@ -309,6 +310,44 @@
             </label>
           </div>
           <div id="rDetails" class="list-rows"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Imprimer ===== -->
+    <section id="imprimer" class="tab-panel">
+      <div class="panel">
+        <div class="card no-print">
+          <h3>Imprimer une feuille</h3>
+          <p class="hint">
+            Génère une feuille d’exercices selon les réglages actuels, puis imprime.
+            Une 2e page contient les réponses pour le parent.
+          </p>
+          <div class="row gap wrap">
+            <button id="printGen" class="btn">Générer les questions</button>
+            <button id="printBtn" class="btn ghost">Imprimer</button>
+          </div>
+        </div>
+
+        <div id="printArea" class="print-area">
+          <div id="printQuestions" class="print-page">
+            <div class="print-header">
+              <div class="print-title">Feuille d’exercices</div>
+              <div class="print-meta" id="printMeta">—</div>
+            </div>
+            <div class="print-instructions">
+              Lis chaque question à gauche et écris la réponse sur la ligne à droite.
+            </div>
+            <div id="printList" class="print-list"></div>
+          </div>
+
+          <div id="printAnswers" class="print-page answers">
+            <div class="print-header">
+              <div class="print-title">Réponses (parent)</div>
+              <div class="print-meta" id="printMetaAnswers">—</div>
+            </div>
+            <div id="printAnswersList" class="print-list"></div>
+          </div>
         </div>
       </div>
     </section>
