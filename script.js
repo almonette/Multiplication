@@ -271,6 +271,24 @@
     settings.globalOp === 'mix' ? settings.ops[op] : op === settings.globalOp;
 
   /* ---------- Génération quiz ---------- */
+  function buildQuizItems(count) {
+    const pool = buildPool();
+    if (pool.length === 0) {
+      alert('Aucun fait disponible (réglages et/ou opération centrale).');
+      return null;
+    }
+
+    const N = Math.min(count, pool.length);
+    const bag = pool.slice();
+    const items = [];
+    while (items.length < N) {
+      const it = pickWeighted(bag);
+      items.push({ op: it.op, a: it.a, b: it.b });
+      bag.splice(bag.indexOf(it), 1);
+    }
+    return items;
+  }
+
   function buildPool() {
     const pool = [];
     const EXCLUDE = !!settings.excludeMastered;
@@ -380,20 +398,8 @@
   }
 
   function startQuiz() {
-    const pool = buildPool();
-    if (pool.length === 0) {
-      alert('Aucun fait disponible (réglages et/ou opération centrale).');
-      return;
-    }
-
-    const N = Math.min(settings.qCount, pool.length);
-    const bag = pool.slice(),
-      items = [];
-    while (items.length < N) {
-      const it = pickWeighted(bag);
-      items.push({ op: it.op, a: it.a, b: it.b });
-      bag.splice(bag.indexOf(it), 1);
-    }
+    const items = buildQuizItems(settings.qCount);
+    if (!items) return;
 
     quiz = { items, idx: 0, score: 0, points: 0, timerSec: settings.timerSec };
     $('startBox')?.classList.add('hidden');
@@ -533,7 +539,7 @@
   }
 
   /* ---------- Dashboard & grille ---------- */
-  function renderDashboard() {
+  function computeKpis() {
     let A = 0,
       S = 0,
       mastered = 0,
@@ -548,10 +554,19 @@
       if (st.consecutive >= 3) mastered++;
       if (st.errors > st.success) weak++;
     }
-    if ($('kpiRate')) $('kpiRate').textContent = A ? `${Math.round((100 * S) / A)}%` : '—';
-    if ($('kpiAttempts')) $('kpiAttempts').textContent = A ? `${A} essais` : '—';
-    if ($('kpiMastered')) $('kpiMastered').textContent = mastered;
-    if ($('kpiWeak')) $('kpiWeak').textContent = weak;
+    return { attempts: A, success: S, mastered, weak };
+  }
+
+  function renderDashboard() {
+    const kpi = computeKpis();
+    if ($('kpiRate'))
+      $('kpiRate').textContent = kpi.attempts
+        ? `${Math.round((100 * kpi.success) / kpi.attempts)}%`
+        : '—';
+    if ($('kpiAttempts'))
+      $('kpiAttempts').textContent = kpi.attempts ? `${kpi.attempts} essais` : '—';
+    if ($('kpiMastered')) $('kpiMastered').textContent = kpi.mastered;
+    if ($('kpiWeak')) $('kpiWeak').textContent = kpi.weak;
 
     const last = results[results.length - 1];
     if ($('kpiLast'))
@@ -763,20 +778,7 @@
   }
 
   function buildPrintItems() {
-    const pool = buildPool();
-    if (pool.length === 0) {
-      alert('Aucun fait disponible (réglages et/ou opération centrale).');
-      return null;
-    }
-    const N = Math.min(settings.qCount, pool.length);
-    const bag = pool.slice();
-    const items = [];
-    while (items.length < N) {
-      const it = pickWeighted(bag);
-      items.push({ op: it.op, a: it.a, b: it.b });
-      bag.splice(bag.indexOf(it), 1);
-    }
-    return items;
+    return buildQuizItems(settings.qCount);
   }
 
   function renderPrint(items) {
@@ -880,24 +882,15 @@
 
   /* ---------- Rapport ---------- */
   function renderReport() {
-    let A = 0,
-      S = 0,
-      mastered = 0,
-      weak = 0;
-    for (const k in stats) {
-      const [op] = k.split('|');
-      if (!opAllowed(op)) continue;
-      const st = stats[k],
-        tot = st.success + st.errors;
-      A += tot;
-      S += st.success;
-      if (st.consecutive >= 3) mastered++;
-      if (st.errors > st.success) weak++;
-    }
-    if ($('rGlobalRate')) $('rGlobalRate').textContent = A ? `${Math.round((100 * S) / A)}%` : '—';
-    if ($('rGlobalAttempts')) $('rGlobalAttempts').textContent = A ? `${A} essais` : '—';
-    if ($('rMasteredCount')) $('rMasteredCount').textContent = mastered;
-    if ($('rWeakCount')) $('rWeakCount').textContent = weak;
+    const kpi = computeKpis();
+    if ($('rGlobalRate'))
+      $('rGlobalRate').textContent = kpi.attempts
+        ? `${Math.round((100 * kpi.success) / kpi.attempts)}%`
+        : '—';
+    if ($('rGlobalAttempts'))
+      $('rGlobalAttempts').textContent = kpi.attempts ? `${kpi.attempts} essais` : '—';
+    if ($('rMasteredCount')) $('rMasteredCount').textContent = kpi.mastered;
+    if ($('rWeakCount')) $('rWeakCount').textContent = kpi.weak;
 
     const last = results[results.length - 1];
     if ($('rLastPoints')) $('rLastPoints').textContent = last ? last.points : '—';
